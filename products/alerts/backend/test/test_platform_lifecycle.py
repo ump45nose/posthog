@@ -36,7 +36,7 @@ class TestPlatformAlertLifecycle(ClickhouseTestMixin, APIBaseTest):
             )
         self.slot = (self.cutoff - timedelta(minutes=1)).isoformat()
 
-    def _record(self, now: datetime | None = None, **overrides) -> None:
+    def _record(self, **overrides) -> None:
         fields = {
             "configuration_id": self.configuration.id,
             "evaluation_key": f"window:{self.cutoff.isoformat()}",
@@ -45,10 +45,12 @@ class TestPlatformAlertLifecycle(ClickhouseTestMixin, APIBaseTest):
             "notified": True,
             "consecutive_failures": 0,
         }
+        at = overrides.pop("at", self.cutoff)
+        fields["evaluation_key"] = f"window:{at.isoformat()}"
         fields.update(overrides)
         # History rides `transaction.on_commit`, which a `TestCase` transaction never reaches.
         with self.captureOnCommitCallbacks(execute=True):
-            record_outcomes(self.team.id, [PlatformAlertOutcome(**fields)], now or self.cutoff)
+            record_outcomes(self.team.id, [PlatformAlertOutcome(**fields)], at)
 
     def _alert(self) -> PlatformAlert:
         with team_scope(self.team.id):
@@ -62,7 +64,7 @@ class TestPlatformAlertLifecycle(ClickhouseTestMixin, APIBaseTest):
         self._record(
             new_state="not_firing",
             firing_episode=FiringEpisode(started_at=self.cutoff, ended=True),
-            now=self.cutoff + timedelta(hours=1),
+            at=self.cutoff + timedelta(hours=1),
         )
         assert self._alert().firing_started_at is None
 
@@ -125,6 +127,34 @@ class TestPlatformAlertLifecycle(ClickhouseTestMixin, APIBaseTest):
 
         assert rows == [("not_firing", self.cutoff)]
         assert self._alert().firing_started_at is None
+
+    def test_a_held_fire_clears_when_the_condition_ends(self) -> None:
+        def held() -> bool:
+            with team_scope(self.team.id):
+                return PlatformAlert.objects.get(configuration=self.configuration, grouping_key="").firing_unannounced
+
+        self._record(new_state="firing", notified=False, muted_notification="fire")
+        assert held() is True
+
+        # The incident ended inside the mute, so there is nothing left to announce when it lifts.
+        # Leaving the flag set here made every later check re-fire.
+        self._record(
+            new_state="not_firing", notified=False, muted_notification="resolve", at=self.cutoff + timedelta(hours=1)
+        )
+        assert held() is False
+
+    def test_a_muted_announcement_is_held_until_one_is_sent(self) -> None:
+        def held() -> bool:
+            with team_scope(self.team.id):
+                return PlatformAlert.objects.get(configuration=self.configuration, grouping_key="").firing_unannounced
+
+        self._record(new_state="firing", notified=False, muted_notification="fire")
+        # Without this the alert reaches the end of its mute already FIRING and never says so.
+        assert held() is True
+
+        # A later tick: `record_outcomes` skips a configuration an earlier attempt advanced past.
+        self._record(new_state="firing", notified=True, muted_notification="", at=self.cutoff + timedelta(hours=1))
+        assert held() is False
 
     def test_a_copied_snooze_mutes_without_holding_back_the_check(self) -> None:
         legacy_id = uuid4()

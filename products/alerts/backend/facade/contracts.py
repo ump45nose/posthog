@@ -110,6 +110,7 @@ class PlatformAlertCheckInput:
     last_notified_at: datetime | None
     snooze_until: datetime | None
     firing_started_at: datetime | None = None
+    firing_unannounced: bool = False
 
     @property
     def filters(self) -> dict[str, Any]:
@@ -221,11 +222,23 @@ class PlatformAlertOutcome:
 
 @frozen
 class GroupTransition:
-    """One transition a delivery would carry. `grouping_key` is empty until a source groups,
-    so delivery reads a list of one today and a list of N when fan-out ships."""
+    """One transition a delivery carries, with everything a message renders from.
+
+    `grouping_key` is empty until a source groups, so delivery reads a list of one today and a
+    list of N when fan-out ships. The condition and the source config travel with the transition
+    rather than being read back at send time, so a threshold edited between the check and a
+    retried send cannot change what the message claims was breached.
+    """
 
     grouping_key: str
     notification: str
+    kind: AlertEventKind
+    previous_state: str
+    state: str
+    value: float | None = None
+    labels: dict[str, str] = field(default_factory=dict)
+    condition: dict[str, Any] = field(default_factory=dict)
+    source_config: dict[str, Any] = field(default_factory=dict)
 
 
 @frozen
