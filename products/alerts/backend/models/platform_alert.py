@@ -99,8 +99,7 @@ class PlatformAlert(TeamScopedRootMixin, UUIDModel):
     # rather than an opaque id, because `last_notified_at >= firing_started_at` is then how a
     # reader knows whether this firing was ever announced.
     firing_started_at = models.DateTimeField(null=True, blank=True)
-    # Set when a mute holds a FIRE. Without it an alert reaches the end of its quiet hours
-    # already FIRING and never says so.
+    # Decided by the shared machine, persisted here.
     firing_unannounced = models.BooleanField(default=False, db_default=False)
 
     class Meta:
