@@ -34,6 +34,7 @@ APIScopeObject = Literal[
     "comment",
     "conversation",
     "context_layer_internal",
+    "cross_project_dashboard",
     "customer_analytics",
     "customer_task",
     "customer_journey",
