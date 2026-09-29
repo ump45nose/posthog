@@ -78,6 +78,13 @@
             "intents": ["conversations"]
         },
         {
+            "path": "Cross-project dashboards",
+            "category": "Analytics",
+            "iconType": "dashboard",
+            "type": null,
+            "intents": []
+        },
+        {
             "path": "Customer analytics",
             "category": "Data",
             "iconType": "customer_analytics",

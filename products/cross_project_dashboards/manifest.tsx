@@ -1,23 +1,44 @@
-/**
- * Product manifest for cross_project_dashboards.
- *
- * Defines scenes, routes, URLs, and navigation for this product.
- */
+import { FEATURE_FLAGS } from 'lib/constants'
+
 import { ProductManifest } from '../../frontend/src/types'
 
 export const manifest: ProductManifest = {
     name: 'CrossProjectDashboards',
     scenes: {
-        // Define scenes here
+        CrossProjectDashboards: {
+            name: 'Cross-project dashboards',
+            import: () => import('./frontend/CrossProjectDashboardsScene'),
+            // Organization-scoped, not project-scoped: a dashboard here holds insights from
+            // several projects, so it cannot live under /project/:id.
+            organizationBased: true,
+            activityScope: 'CrossProjectDashboard',
+            description: 'Put insights from several projects on one page.',
+        },
+        CrossProjectDashboard: {
+            name: 'Cross-project dashboard',
+            import: () => import('./frontend/CrossProjectDashboardScene'),
+            organizationBased: true,
+            activityScope: 'CrossProjectDashboard',
+        },
     },
     routes: {
-        // Define routes here
+        '/cross-project-dashboards': ['CrossProjectDashboards', 'crossProjectDashboards'],
+        '/cross-project-dashboards/:id': ['CrossProjectDashboard', 'crossProjectDashboard'],
     },
     redirects: {},
     urls: {
-        // Define URL helpers here
+        crossProjectDashboards: (): string => '/cross-project-dashboards',
+        crossProjectDashboard: (id: string): string => `/cross-project-dashboards/${id}`,
     },
     fileSystemTypes: {},
     treeItemsNew: [],
-    treeItemsProducts: [],
+    treeItemsProducts: [
+        {
+            path: 'Cross-project dashboards',
+            category: 'Analytics',
+            href: '/cross-project-dashboards',
+            iconType: 'dashboard',
+            flag: FEATURE_FLAGS.CROSS_PROJECT_DASHBOARDS,
+        },
+    ],
 }

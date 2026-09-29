@@ -1307,6 +1307,7 @@ export type ActivityLogListParams = {
      * Filter by a single activity scope, e.g. "FeatureFlag", "Insight", "Dashboard", "Experiment".
      *
      * * `Cohort` - Cohort
+     * * `CrossProjectDashboard` - CrossProjectDashboard
      * * `FeatureFlag` - FeatureFlag
      * * `Person` - Person
      * * `Group` - Group
@@ -1409,6 +1410,7 @@ export type ActivityLogListScope = (typeof ActivityLogListScope)[keyof typeof Ac
 
 export const ActivityLogListScope = {
     Cohort: 'Cohort',
+    CrossProjectDashboard: 'CrossProjectDashboard',
     FeatureFlag: 'FeatureFlag',
     Person: 'Person',
     Group: 'Group',
@@ -1498,6 +1500,7 @@ export const ActivityLogListScope = {
 
 /**
  * * `Cohort` - Cohort
+ * * `CrossProjectDashboard` - CrossProjectDashboard
  * * `FeatureFlag` - FeatureFlag
  * * `Person` - Person
  * * `Group` - Group
@@ -1588,6 +1591,7 @@ export type ActivityLogListScopesItem = (typeof ActivityLogListScopesItem)[keyof
 
 export const ActivityLogListScopesItem = {
     Cohort: 'Cohort',
+    CrossProjectDashboard: 'CrossProjectDashboard',
     FeatureFlag: 'FeatureFlag',
     Person: 'Person',
     Group: 'Group',
