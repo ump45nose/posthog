@@ -5,7 +5,7 @@ import { LemonSkeleton } from '@posthog/lemon-ui'
 import { InsightCard } from 'lib/components/Cards/InsightCard/InsightCard'
 import { InsightErrorState } from 'scenes/insights/EmptyStates/EmptyStates'
 
-import type { QueryBasedInsightModel } from '~/types'
+import { DashboardPlacement, type InsightModel } from '~/types'
 
 import type { TileUnavailableReason } from './crossProjectTileFetch'
 import { fetchCrossProjectTile } from './crossProjectTileFetch'
@@ -23,7 +23,7 @@ export interface CrossProjectTileProps {
 }
 
 export function CrossProjectTile({ projectId, insightId, filtersOverride }: CrossProjectTileProps): JSX.Element {
-    const [insight, setInsight] = useState<QueryBasedInsightModel | null>(null)
+    const [insight, setInsight] = useState<InsightModel | null>(null)
     const [unavailable, setUnavailable] = useState<TileUnavailableReason | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -57,5 +57,12 @@ export function CrossProjectTile({ projectId, insightId, filtersOverride }: Cros
         )
     }
 
-    return <InsightCard insight={insight} showEditingControls={false} showDetailsControls={false} />
+    return (
+        <InsightCard
+            insight={insight}
+            placement={DashboardPlacement.Dashboard}
+            showEditingControls={false}
+            showDetailsControls={false}
+        />
+    )
 }

@@ -1,11 +1,11 @@
 import api from 'lib/api'
 
-import type { QueryBasedInsightModel } from '~/types'
+import type { InsightModel } from '~/types'
 
 export type TileUnavailableReason = 'no-access' | 'not-found' | 'failed'
 
 export interface TileFetchResult {
-    insight: QueryBasedInsightModel | null
+    insight: InsightModel | null
     unavailable: TileUnavailableReason | null
 }
 

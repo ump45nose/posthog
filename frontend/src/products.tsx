@@ -2064,7 +2064,6 @@ export type ProductTreePath =
     | 'Business knowledge'
     | 'Clusters'
     | 'Code review'
-    | 'Cross-project dashboards'
     | 'Customer analytics'
     | 'Dashboards'
     | 'Data catalog'
@@ -2206,14 +2205,6 @@ export const getTreeItemsProducts = (): FileSystemImport[] => [
         tags: ['alpha'],
         sceneKey: 'CodeReview',
         sceneKeys: ['CodeReview'],
-    },
-    {
-        path: 'Cross-project dashboards',
-        category: 'Analytics',
-        href: '/cross-project-dashboards',
-        iconType: 'dashboard',
-        flag: FEATURE_FLAGS.CROSS_PROJECT_DASHBOARDS,
-        sceneKeys: ['CrossProjectDashboards', 'CrossProjectDashboard'],
     },
     {
         path: 'Customer analytics',

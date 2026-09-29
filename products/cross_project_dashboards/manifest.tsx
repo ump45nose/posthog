@@ -1,5 +1,3 @@
-import { FEATURE_FLAGS } from 'lib/constants'
-
 import { ProductManifest } from '../../frontend/src/types'
 
 export const manifest: ProductManifest = {
@@ -32,13 +30,5 @@ export const manifest: ProductManifest = {
     },
     fileSystemTypes: {},
     treeItemsNew: [],
-    treeItemsProducts: [
-        {
-            path: 'Cross-project dashboards',
-            category: 'Analytics',
-            href: '/cross-project-dashboards',
-            iconType: 'dashboard',
-            flag: FEATURE_FLAGS.CROSS_PROJECT_DASHBOARDS,
-        },
-    ],
+    treeItemsProducts: [],
 }
