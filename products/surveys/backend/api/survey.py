@@ -77,6 +77,11 @@ from products.feature_flags.backend.api.feature_flag import (
 from products.feature_flags.backend.models.feature_flag import FeatureFlag
 from products.feature_flags.backend.ownership import FLAG_OWNER_SURVEY, assert_flag_available_for
 from products.product_analytics.backend.facade.models import Insight
+from products.surveys.backend.global_cooldown import (
+    WAIT_PERIOD_KEY,
+    build_user_interacted_filters,
+    get_effective_wait_period_days,
+)
 from products.surveys.backend.models import MAX_ITERATION_COUNT, Survey, SurveyResponseArchive, ensure_question_ids
 from products.surveys.backend.responses import (
     SurveyRates,
@@ -92,7 +97,7 @@ from products.surveys.backend.responses import (
 )
 from products.surveys.backend.summarization import fetch_responses, format_as_markdown, summarize_responses
 from products.surveys.backend.translation import generate_survey_translation
-from products.surveys.backend.util import SurveyEventProperties, get_archived_response_uuids
+from products.surveys.backend.util import get_archived_response_uuids
 
 from ee.surveys.summaries.headline_summary import generate_survey_headline
 
@@ -1989,70 +1994,8 @@ class SurveySerializerCreateUpdateOnly(serializers.ModelSerializer):
     def _add_user_survey_interacted_filters(self, instance: Survey):
         should_flag_be_active = self._should_survey_flags_be_active(instance)
 
-        survey_key = f"{instance.id}"
-        if instance.iteration_count is not None and instance.iteration_count > 0:
-            survey_key = f"{instance.id}/{instance.current_iteration or 1}"
-
-        base_properties = [
-            {
-                "key": f"{SurveyEventProperties.SURVEY_DISMISSED}/{survey_key}",
-                "value": "is_not_set",
-                "operator": "is_not_set",
-                "type": "person",
-            },
-            {
-                "key": f"{SurveyEventProperties.SURVEY_RESPONDED}/{survey_key}",
-                "value": "is_not_set",
-                "operator": "is_not_set",
-                "type": "person",
-            },
-        ]
-
-        wait_period_days = None
-        if instance.conditions and isinstance(instance.conditions, dict):
-            wait_period_days = instance.conditions.get("seenSurveyWaitPeriodInDays")
-
-        if wait_period_days is not None and wait_period_days > 0:
-            user_submitted_dismissed_filter = {
-                "groups": [
-                    {
-                        "variant": "",
-                        "rollout_percentage": 100,
-                        "properties": [
-                            *base_properties,
-                            {
-                                "key": SurveyEventProperties.SURVEY_LAST_SEEN_DATE,
-                                "value": "is_not_set",
-                                "operator": "is_not_set",
-                                "type": "person",
-                            },
-                        ],
-                    },
-                    {
-                        "variant": "",
-                        "rollout_percentage": 100,
-                        "properties": [
-                            *base_properties,
-                            {
-                                "key": SurveyEventProperties.SURVEY_LAST_SEEN_DATE,
-                                "value": f"{int(wait_period_days)}d",
-                                "operator": "is_date_before",
-                                "type": "person",
-                            },
-                        ],
-                    },
-                ]
-            }
-        else:
-            user_submitted_dismissed_filter = {
-                "groups": [
-                    {
-                        "variant": "",
-                        "rollout_percentage": 100,
-                        "properties": base_properties,
-                    }
-                ]
-            }
+        wait_period_days = get_effective_wait_period_days(instance.conditions, instance.team.survey_config)
+        user_submitted_dismissed_filter = build_user_interacted_filters(instance, wait_period_days)
 
         if instance.internal_targeting_flag:
             existing_targeting_flag = instance.internal_targeting_flag
@@ -3557,7 +3500,16 @@ class SurveyAPISerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_conditions(self, survey: Survey):
-        return get_survey_conditions_with_actions(survey, SurveyAPIActionSerializer)
+        conditions = get_survey_conditions_with_actions(survey, SurveyAPIActionSerializer)
+        # Only the SDK payload passes the team. SDKs enforce the wait period on the device too,
+        # so that payload sends the effective value.
+        team = self.context.get("team")
+        if team is None:
+            return conditions
+        wait_period_days = get_effective_wait_period_days(conditions, team.survey_config)
+        if wait_period_days is None:
+            return conditions
+        return {**(conditions or {}), WAIT_PERIOD_KEY: wait_period_days}
 
     @extend_schema_field(
         serializers.DictField(child=serializers.DictField(child=serializers.CharField()), allow_null=True)
@@ -3640,6 +3592,7 @@ def get_surveys_response(team: Team) -> dict[str, Any]:
         # Launch order (oldest first) keeps that winner deterministic across cache rebuilds.
         .order_by("start_date", "created_at", "id"),
         many=True,
+        context={"team": team},
     ).data
 
     return {"surveys": surveys}

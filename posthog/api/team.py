@@ -129,6 +129,11 @@ from products.feature_flags.backend.facade.flags import get_usage_tab_flag_evalu
 from products.feature_flags.backend.models.evaluation_context import EvaluationContext, normalize_context_name
 from products.feature_flags.backend.models.team_feature_flag_policy_config import TeamFeatureFlagPolicyConfig
 from products.logs.backend.models import TeamLogsConfig
+from products.surveys.backend.global_cooldown import (
+    sync_survey_wait_period_flags,
+    validate_survey_config,
+    wait_period_changed,
+)
 from products.tasks.backend.facade.workflow_tasks import (
     MAX_SELF_SERVE_WORKFLOW_TASK_RATE_CAP_PER_DAY,
     MAX_SELF_SERVE_WORKFLOW_TASK_TEAM_RATE_CAP_PER_DAY,
@@ -2159,6 +2164,9 @@ class TeamSerializer(serializers.ModelSerializer, UserPermissionsSerializerMixin
 
         return value
 
+    def validate_survey_config(self, value: dict | None) -> dict | None:
+        return validate_survey_config(value)
+
     def validate_proactive_tasks_enabled(self, value: bool | None) -> bool | None:
         if not value or settings.DEBUG:
             return value
@@ -2235,7 +2243,9 @@ class TeamSerializer(serializers.ModelSerializer, UserPermissionsSerializerMixin
                 instance, validated_data["session_recording_retention_period"]
             )
 
+        survey_wait_period_changed = False
         if "survey_config" in validated_data:
+            previous_survey_config = instance.survey_config
             if instance.survey_config is not None and validated_data.get("survey_config") is not None:
                 validated_data["survey_config"] = {
                     **instance.survey_config,
@@ -2266,6 +2276,10 @@ class TeamSerializer(serializers.ModelSerializer, UserPermissionsSerializerMixin
                         changes=survey_config_changes_between,
                     ),
                 )
+
+            survey_wait_period_changed = wait_period_changed(
+                previous_survey_config, validated_data.get("survey_config")
+            )
 
         if (
             "session_replay_config" in validated_data
@@ -2331,6 +2345,9 @@ class TeamSerializer(serializers.ModelSerializer, UserPermissionsSerializerMixin
             instance.refresh_from_db()
             set_team_in_cache(instance.api_token, instance)
         updated_team = instance
+
+        if survey_wait_period_changed:
+            sync_survey_wait_period_flags(instance)
 
         changes = dict_changes_between("Team", before_update, after_update, use_field_exclusions=True)
 
