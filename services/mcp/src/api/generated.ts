@@ -23854,7 +23854,7 @@ export namespace Schemas {
     }
 
     export interface CrossProjectDashboardTile {
-      id?: string;
+      readonly id: string;
       /**
          * Id of the project the tile's insight belongs to.
          * @minimum -2147483648
@@ -23896,7 +23896,7 @@ export namespace Schemas {
       description?: string;
       /** Dashboard-level filters applied to every tile. Supports a date range, an interval, and property filters that refer to a property by name. Filters carrying a project-specific id are rejected. */
       filters?: unknown;
-      tiles?: CrossProjectDashboardTile[];
+      readonly tiles: readonly CrossProjectDashboardTile[];
       readonly created_by: UserBasic;
       readonly created_at: string;
       /** @nullable */
@@ -64321,6 +64321,15 @@ export namespace Schemas {
       results: CrossProjectDashboard[];
     }
 
+    export interface PaginatedCrossProjectDashboardTileList {
+      count: number;
+      /** @nullable */
+      next?: string | null;
+      /** @nullable */
+      previous?: string | null;
+      results: CrossProjectDashboardTile[];
+    }
+
     export interface PaginatedCustomPropertyDefinitionList {
       count: number;
       /** @nullable */
@@ -72270,11 +72279,37 @@ export namespace Schemas {
       description?: string;
       /** Dashboard-level filters applied to every tile. Supports a date range, an interval, and property filters that refer to a property by name. Filters carrying a project-specific id are rejected. */
       filters?: unknown;
-      tiles?: CrossProjectDashboardTile[];
+      readonly tiles?: readonly CrossProjectDashboardTile[];
       readonly created_by?: UserBasic;
       readonly created_at?: string;
       /** @nullable */
       readonly updated_at?: string | null;
+    }
+
+    export interface PatchedCrossProjectDashboardTile {
+      readonly id?: string;
+      /**
+         * Id of the project the tile's insight belongs to.
+         * @minimum -2147483648
+         * @maximum 2147483647
+         */
+      project_id?: number;
+      /**
+         * Id of the insight the tile renders.
+         * @minimum -2147483648
+         * @maximum 2147483647
+         */
+      insight_id?: number;
+      /** Grid position and size of the tile, keyed by layout size. */
+      layouts?: unknown;
+      /**
+         * Optional colour applied to the tile.
+         * @maxLength 400
+         * @nullable
+         */
+      color?: string | null;
+      /** Filters applied to this tile only. */
+      filters_overrides?: unknown;
     }
 
     /**
@@ -107523,6 +107558,17 @@ export namespace Schemas {
     };
 
     export type CrossProjectDashboardsListParams = {
+    /**
+     * Number of results to return per page.
+     */
+    limit?: number;
+    /**
+     * The initial index from which to return the results.
+     */
+    offset?: number;
+    };
+
+    export type CrossProjectDashboardsTilesListParams = {
     /**
      * Number of results to return per page.
      */

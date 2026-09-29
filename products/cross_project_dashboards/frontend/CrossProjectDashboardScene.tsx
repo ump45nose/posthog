@@ -21,9 +21,8 @@ export const scene: SceneExport = {
 
 export function CrossProjectDashboardScene(): JSX.Element {
     const { dashboard, dashboardLoading, tiles } = useValues(crossProjectDashboardLogic)
-    const { openModal } = useActions(
-        addCrossProjectTileLogic({ dashboardId: dashboard?.id ?? '', existingTiles: tiles })
-    )
+    const { removeTile } = useActions(crossProjectDashboardLogic)
+    const { openModal } = useActions(addCrossProjectTileLogic({ dashboardId: dashboard?.id ?? '' }))
 
     return (
         <SceneContent>
@@ -58,11 +57,12 @@ export function CrossProjectDashboardScene(): JSX.Element {
                             projectId={tile.project_id}
                             insightId={tile.insight_id}
                             filtersOverride={(dashboard.filters as Record<string, unknown> | undefined) ?? undefined}
+                            onRemove={() => removeTile(tile.id)}
                         />
                     ))}
                 </div>
             )}
-            {dashboard ? <AddCrossProjectTileModal dashboardId={dashboard.id} existingTiles={tiles} /> : null}
+            {dashboard ? <AddCrossProjectTileModal dashboardId={dashboard.id} /> : null}
         </SceneContent>
     )
 }

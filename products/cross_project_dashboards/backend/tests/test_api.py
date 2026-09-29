@@ -6,7 +6,6 @@ from rest_framework import status
 from posthog.models import Organization
 
 from products.cross_project_dashboards.backend.models import CrossProjectDashboard
-from products.product_analytics.backend.facade.models import Insight
 
 
 @patch("posthog.permissions.posthog_feature_flag_enabled", return_value=True)
@@ -23,34 +22,6 @@ class TestCrossProjectDashboardAPI(APIBaseTest):
         response = self.client.post(self._url(), {"name": "Company overview"})
         assert response.status_code == status.HTTP_201_CREATED, response.json()
         assert response.json()["name"] == "Company overview"
-
-    def test_adds_a_tile_and_returns_ids_only(self, _flag):
-        insight = Insight.objects.create(team=self.team, name="Signups")
-        dashboard = self._dashboard()
-        response = self.client.patch(
-            self._url(f"{dashboard.id}/"),
-            {"tiles": [{"project_id": self.team.pk, "insight_id": insight.pk, "layouts": {}}]},
-            format="json",
-        )
-        assert response.status_code == status.HTTP_200_OK, response.json()
-        tile = response.json()["tiles"][0]
-        assert tile["project_id"] == self.team.pk
-        assert tile["insight_id"] == insight.pk
-        # The response must carry references only: no name, no query, no result.
-        assert "name" not in tile
-        assert "query" not in tile
-        assert "result" not in tile
-
-    def test_rejects_a_tile_referencing_an_unreachable_insight(self, _flag):
-        other_organization = Organization.objects.create(name="Other")
-        dashboard = self._dashboard()
-        response = self.client.patch(
-            self._url(f"{dashboard.id}/"),
-            {"tiles": [{"project_id": 999999, "insight_id": 1, "layouts": {}}]},
-            format="json",
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert other_organization.id is not None
 
     def test_rejects_a_project_bound_filter(self, _flag):
         response = self.client.post(

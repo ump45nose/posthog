@@ -2,8 +2,6 @@
 
 from typing import Any, cast
 
-from django.db import transaction
-
 from rest_framework import serializers
 
 from posthog.api.shared import UserBasicSerializer
@@ -18,11 +16,10 @@ from products.cross_project_dashboards.backend.facade.api import (
 
 
 class CrossProjectDashboardTileSerializer(serializers.ModelSerializer):
-    id = serializers.UUIDField(required=False)
-
     class Meta:
         model = CrossProjectDashboardTile
         fields = ["id", "project_id", "insight_id", "layouts", "color", "filters_overrides"]
+        read_only_fields = ["id"]
         extra_kwargs = {
             "project_id": {"help_text": "Id of the project the tile's insight belongs to."},
             "insight_id": {"help_text": "Id of the insight the tile renders."},
@@ -30,6 +27,19 @@ class CrossProjectDashboardTileSerializer(serializers.ModelSerializer):
             "color": {"help_text": "Optional colour applied to the tile."},
             "filters_overrides": {"help_text": "Filters applied to this tile only."},
         }
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        # Only on create: project_id and insight_id are immutable once a tile exists, so an
+        # update never re-points a tile at another project.
+        if self.instance is None:
+            user = cast(User, self.context["request"].user)
+            assert_can_reference_insight(user, attrs["project_id"], attrs["insight_id"])
+        return attrs
+
+    def update(self, instance: CrossProjectDashboardTile, validated_data: dict[str, Any]) -> CrossProjectDashboardTile:
+        validated_data.pop("project_id", None)
+        validated_data.pop("insight_id", None)
+        return super().update(instance, validated_data)
 
 
 class CrossProjectDashboardSerializer(serializers.ModelSerializer):
@@ -39,7 +49,7 @@ class CrossProjectDashboardSerializer(serializers.ModelSerializer):
     that tile's own project endpoint, so their access, quota and cache key stay correct there.
     """
 
-    tiles = CrossProjectDashboardTileSerializer(many=True, required=False)
+    tiles = CrossProjectDashboardTileSerializer(many=True, read_only=True)
     created_by = UserBasicSerializer(read_only=True)
 
     class Meta:
@@ -54,7 +64,7 @@ class CrossProjectDashboardSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["id", "tiles", "created_by", "created_at", "updated_at"]
         extra_kwargs = {
             "name": {"help_text": "Name shown in the dashboard list and page header."},
             "description": {"help_text": "Optional longer description."},
@@ -72,42 +82,9 @@ class CrossProjectDashboardSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data: dict[str, Any]) -> CrossProjectDashboard:
-        tiles = validated_data.pop("tiles", [])
         request = self.context["request"]
-        dashboard = CrossProjectDashboard.objects.create(
+        return CrossProjectDashboard.objects.create(
             organization_id=self.context["organization_id"],
             created_by=cast(User, request.user),
             **validated_data,
         )
-        self._replace_tiles(dashboard, tiles)
-        return dashboard
-
-    def update(self, instance: CrossProjectDashboard, validated_data: dict[str, Any]) -> CrossProjectDashboard:
-        tiles = validated_data.pop("tiles", None)
-        for field, value in validated_data.items():
-            setattr(instance, field, value)
-        instance.save()
-        if tiles is not None:
-            self._replace_tiles(instance, tiles)
-        return instance
-
-    def _replace_tiles(self, dashboard: CrossProjectDashboard, tiles: list[dict[str, Any]]) -> None:
-        user = cast(User, self.context["request"].user)
-        for tile in tiles:
-            assert_can_reference_insight(user, tile["project_id"], tile["insight_id"])
-
-        with transaction.atomic():
-            dashboard.tiles.filter(deleted=False).update(deleted=True)
-            for tile in tiles:
-                CrossProjectDashboardTile.objects.update_or_create(
-                    dashboard=dashboard,
-                    project_id=tile["project_id"],
-                    insight_id=tile["insight_id"],
-                    defaults={
-                        "organization_id": dashboard.organization_id,
-                        "layouts": tile.get("layouts", {}),
-                        "color": tile.get("color"),
-                        "filters_overrides": tile.get("filters_overrides", {}),
-                        "deleted": False,
-                    },
-                )

@@ -10,9 +10,13 @@ import { apiMutator } from '../../../../frontend/src/lib/api-orval-mutator'
  */
 import type {
     CrossProjectDashboardApi,
+    CrossProjectDashboardTileApi,
     CrossProjectDashboardsListParams,
+    CrossProjectDashboardsTilesListParams,
     PaginatedCrossProjectDashboardListApi,
+    PaginatedCrossProjectDashboardTileListApi,
     PatchedCrossProjectDashboardApi,
+    PatchedCrossProjectDashboardTileApi,
 } from './api.schemas'
 
 // https://stackoverflow.com/questions/49579094/typescript-conditional-types-filter-out-readonly-properties-pick-only-requir/49579497#49579497
@@ -79,6 +83,181 @@ export const crossProjectDashboardsCreate = async (
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...options?.headers },
         body: JSON.stringify(crossProjectDashboardApi),
+    })
+}
+
+export const getCrossProjectDashboardsTilesListUrl = (
+    organizationId: string,
+    dashboardId: string,
+    params?: CrossProjectDashboardsTilesListParams
+) => {
+    const normalizedParams = new URLSearchParams()
+
+    Object.entries(params || {}).forEach(([key, value]) => {
+        if (value !== undefined) {
+            normalizedParams.append(key, value === null ? 'null' : String(value))
+        }
+    })
+
+    const stringifiedParams = normalizedParams.toString()
+
+    return stringifiedParams.length > 0
+        ? `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/?${stringifiedParams}`
+        : `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesList = async (
+    organizationId: string,
+    dashboardId: string,
+    params?: CrossProjectDashboardsTilesListParams,
+    options?: RequestInit
+): Promise<PaginatedCrossProjectDashboardTileListApi> => {
+    return apiMutator<PaginatedCrossProjectDashboardTileListApi>(
+        getCrossProjectDashboardsTilesListUrl(organizationId, dashboardId, params),
+        {
+            ...options,
+            method: 'GET',
+        }
+    )
+}
+
+export const getCrossProjectDashboardsTilesCreateUrl = (organizationId: string, dashboardId: string) => {
+    return `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesCreate = async (
+    organizationId: string,
+    dashboardId: string,
+    crossProjectDashboardTileApi: NonReadonly<CrossProjectDashboardTileApi>,
+    options?: RequestInit
+): Promise<CrossProjectDashboardTileApi> => {
+    return apiMutator<CrossProjectDashboardTileApi>(
+        getCrossProjectDashboardsTilesCreateUrl(organizationId, dashboardId),
+        {
+            ...options,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
+            body: JSON.stringify(crossProjectDashboardTileApi),
+        }
+    )
+}
+
+export const getCrossProjectDashboardsTilesRetrieveUrl = (organizationId: string, dashboardId: string, id: string) => {
+    return `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/${id}/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesRetrieve = async (
+    organizationId: string,
+    dashboardId: string,
+    id: string,
+    options?: RequestInit
+): Promise<CrossProjectDashboardTileApi> => {
+    return apiMutator<CrossProjectDashboardTileApi>(
+        getCrossProjectDashboardsTilesRetrieveUrl(organizationId, dashboardId, id),
+        {
+            ...options,
+            method: 'GET',
+        }
+    )
+}
+
+export const getCrossProjectDashboardsTilesUpdateUrl = (organizationId: string, dashboardId: string, id: string) => {
+    return `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/${id}/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesUpdate = async (
+    organizationId: string,
+    dashboardId: string,
+    id: string,
+    crossProjectDashboardTileApi: NonReadonly<CrossProjectDashboardTileApi>,
+    options?: RequestInit
+): Promise<CrossProjectDashboardTileApi> => {
+    return apiMutator<CrossProjectDashboardTileApi>(
+        getCrossProjectDashboardsTilesUpdateUrl(organizationId, dashboardId, id),
+        {
+            ...options,
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
+            body: JSON.stringify(crossProjectDashboardTileApi),
+        }
+    )
+}
+
+export const getCrossProjectDashboardsTilesPartialUpdateUrl = (
+    organizationId: string,
+    dashboardId: string,
+    id: string
+) => {
+    return `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/${id}/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesPartialUpdate = async (
+    organizationId: string,
+    dashboardId: string,
+    id: string,
+    patchedCrossProjectDashboardTileApi?: NonReadonly<PatchedCrossProjectDashboardTileApi>,
+    options?: RequestInit
+): Promise<CrossProjectDashboardTileApi> => {
+    return apiMutator<CrossProjectDashboardTileApi>(
+        getCrossProjectDashboardsTilesPartialUpdateUrl(organizationId, dashboardId, id),
+        {
+            ...options,
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
+            body: JSON.stringify(patchedCrossProjectDashboardTileApi),
+        }
+    )
+}
+
+export const getCrossProjectDashboardsTilesDestroyUrl = (organizationId: string, dashboardId: string, id: string) => {
+    return `/api/organizations/${organizationId}/cross_project_dashboards/${dashboardId}/tiles/${id}/`
+}
+
+/**
+ * Tiles on one cross-project dashboard, edited one at a time.
+ *
+ * Writes are per tile rather than a whole-set replace, so two people editing the same
+ * dashboard cannot overwrite each other's tiles.
+ */
+export const crossProjectDashboardsTilesDestroy = async (
+    organizationId: string,
+    dashboardId: string,
+    id: string,
+    options?: RequestInit
+): Promise<void> => {
+    return apiMutator<void>(getCrossProjectDashboardsTilesDestroyUrl(organizationId, dashboardId, id), {
+        ...options,
+        method: 'DELETE',
     })
 }
 

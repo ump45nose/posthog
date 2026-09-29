@@ -27,6 +27,7 @@ export enum DashboardsTab {
     All = 'all',
     Yours = 'yours',
     Pinned = 'pinned',
+    CrossProject = 'cross-project',
 }
 
 const DEFAULT_SORTING: Sorting = { columnKey: 'name', order: 1 }

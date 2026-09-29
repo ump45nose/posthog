@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
-import { LemonSkeleton } from '@posthog/lemon-ui'
+import { IconTrash } from '@posthog/icons'
+import { LemonButton, LemonSkeleton } from '@posthog/lemon-ui'
 
 import { InsightCard } from 'lib/components/Cards/InsightCard/InsightCard'
 import { InsightErrorState } from 'scenes/insights/EmptyStates/EmptyStates'
@@ -20,9 +21,15 @@ export interface CrossProjectTileProps {
     projectId: number
     insightId: number
     filtersOverride?: Record<string, unknown>
+    onRemove?: () => void
 }
 
-export function CrossProjectTile({ projectId, insightId, filtersOverride }: CrossProjectTileProps): JSX.Element {
+export function CrossProjectTile({
+    projectId,
+    insightId,
+    filtersOverride,
+    onRemove,
+}: CrossProjectTileProps): JSX.Element {
     const [insight, setInsight] = useState<InsightModel | null>(null)
     const [unavailable, setUnavailable] = useState<TileUnavailableReason | null>(null)
     const [loading, setLoading] = useState(true)
@@ -43,12 +50,30 @@ export function CrossProjectTile({ projectId, insightId, filtersOverride }: Cros
         }
     }, [projectId, insightId, filtersOverride])
 
+    const withRemove = (content: JSX.Element): JSX.Element =>
+        onRemove ? (
+            <div className="relative">
+                <div className="absolute top-2 right-2 z-10">
+                    <LemonButton
+                        size="small"
+                        icon={<IconTrash />}
+                        onClick={onRemove}
+                        tooltip="Remove from this dashboard"
+                        data-attr="cross-project-tile-remove"
+                    />
+                </div>
+                {content}
+            </div>
+        ) : (
+            content
+        )
+
     if (loading) {
-        return <LemonSkeleton className="h-60 w-full" data-attr="cross-project-tile-loading" />
+        return withRemove(<LemonSkeleton className="h-60 w-full" data-attr="cross-project-tile-loading" />)
     }
 
     if (unavailable || !insight) {
-        return (
+        return withRemove(
             <InsightErrorState
                 data-attr="cross-project-tile-unavailable"
                 title={UNAVAILABLE_COPY[unavailable ?? 'failed']}
@@ -57,7 +82,7 @@ export function CrossProjectTile({ projectId, insightId, filtersOverride }: Cros
         )
     }
 
-    return (
+    return withRemove(
         <InsightCard
             insight={insight}
             placement={DashboardPlacement.Dashboard}

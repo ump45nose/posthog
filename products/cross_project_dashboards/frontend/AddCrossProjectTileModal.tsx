@@ -5,15 +5,13 @@ import { LemonButton, LemonModal, LemonSelect } from '@posthog/lemon-ui'
 import { LemonField } from 'lib/lemon-ui/LemonField'
 
 import { addCrossProjectTileLogic } from './addCrossProjectTileLogic'
-import type { CrossProjectDashboardTileApi } from './generated/api.schemas'
 
 export interface AddCrossProjectTileModalProps {
     dashboardId: string
-    existingTiles: CrossProjectDashboardTileApi[]
 }
 
-export function AddCrossProjectTileModal({ dashboardId, existingTiles }: AddCrossProjectTileModalProps): JSX.Element {
-    const logic = addCrossProjectTileLogic({ dashboardId, existingTiles })
+export function AddCrossProjectTileModal({ dashboardId }: AddCrossProjectTileModalProps): JSX.Element {
+    const logic = addCrossProjectTileLogic({ dashboardId })
     const { isOpen, projectId, insightId, projectOptions, insightOptions, insightsLoading, canAdd, isAdding } =
         useValues(logic)
     const { closeModal, setProjectId, setInsightId, addTile } = useActions(logic)

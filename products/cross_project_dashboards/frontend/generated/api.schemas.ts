@@ -8,7 +8,7 @@
  * OpenAPI spec version: 1.0.0
  */
 export interface CrossProjectDashboardTileApi {
-    id?: string
+    readonly id: string
     /**
      * Id of the project the tile's insight belongs to.
      * @minimum -2147483648
@@ -107,7 +107,7 @@ export interface CrossProjectDashboardApi {
     description?: string
     /** Dashboard-level filters applied to every tile. Supports a date range, an interval, and property filters that refer to a property by name. Filters carrying a project-specific id are rejected. */
     filters?: unknown
-    tiles?: CrossProjectDashboardTileApi[]
+    readonly tiles: readonly CrossProjectDashboardTileApi[]
     readonly created_by: UserBasicApi
     readonly created_at: string
     /** @nullable */
@@ -121,6 +121,41 @@ export interface PaginatedCrossProjectDashboardListApi {
     /** @nullable */
     previous?: string | null
     results: CrossProjectDashboardApi[]
+}
+
+export interface PaginatedCrossProjectDashboardTileListApi {
+    count: number
+    /** @nullable */
+    next?: string | null
+    /** @nullable */
+    previous?: string | null
+    results: CrossProjectDashboardTileApi[]
+}
+
+export interface PatchedCrossProjectDashboardTileApi {
+    readonly id?: string
+    /**
+     * Id of the project the tile's insight belongs to.
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    project_id?: number
+    /**
+     * Id of the insight the tile renders.
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    insight_id?: number
+    /** Grid position and size of the tile, keyed by layout size. */
+    layouts?: unknown
+    /**
+     * Optional colour applied to the tile.
+     * @maxLength 400
+     * @nullable
+     */
+    color?: string | null
+    /** Filters applied to this tile only. */
+    filters_overrides?: unknown
 }
 
 /**
@@ -140,7 +175,7 @@ export interface PatchedCrossProjectDashboardApi {
     description?: string
     /** Dashboard-level filters applied to every tile. Supports a date range, an interval, and property filters that refer to a property by name. Filters carrying a project-specific id are rejected. */
     filters?: unknown
-    tiles?: CrossProjectDashboardTileApi[]
+    readonly tiles?: readonly CrossProjectDashboardTileApi[]
     readonly created_by?: UserBasicApi
     readonly created_at?: string
     /** @nullable */
@@ -148,6 +183,17 @@ export interface PatchedCrossProjectDashboardApi {
 }
 
 export type CrossProjectDashboardsListParams = {
+    /**
+     * Number of results to return per page.
+     */
+    limit?: number
+    /**
+     * The initial index from which to return the results.
+     */
+    offset?: number
+}
+
+export type CrossProjectDashboardsTilesListParams = {
     /**
      * Number of results to return per page.
      */
