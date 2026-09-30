@@ -11,14 +11,28 @@ export interface CanvasSpace {
     system_role: 'personal' | 'general' | null
 }
 
+export interface CanvasTaskRun {
+    id: string
+    status: string
+    /** @nullable */
+    error_message?: string | null
+}
+
 export interface CanvasGenerationTask {
     id: string
     title: string
-    latest_run: { status: string } | null
+    latest_run: CanvasTaskRun | null
+    created_by?: { uuid: string } | null
 }
 
 // pinned: task run statuses from the tasks API
 const TERMINAL_RUN_STATUSES = new Set(['completed', 'failed', 'cancelled'])
+const STARTING_RUN_STATUSES = new Set(['not_started', 'queued'])
+
+/** Whether a run exists but its agent has not begun work yet. */
+export function isStartingRunStatus(status: string | null | undefined): boolean {
+    return !!status && STARTING_RUN_STATUSES.has(status)
+}
 
 export function isTerminalRunStatus(status: string | null | undefined): boolean {
     return !!status && TERMINAL_RUN_STATUSES.has(status)
@@ -77,4 +91,35 @@ export async function createCanvasGenerationTask(
 
 export async function loadCanvasGenerationTask(projectId: string, taskId: string): Promise<CanvasGenerationTask> {
     return api.get<CanvasGenerationTask>(`api/projects/${projectId}/tasks/${taskId}/`)
+}
+
+/** Sends a follow-up message to a run that is still live. The agent reads it on its next turn. */
+export async function sendCanvasRunMessage(
+    projectId: string,
+    taskId: string,
+    runId: string,
+    content: string
+): Promise<void> {
+    const response = await api.create<{ result?: { queued?: boolean } }>(
+        `api/projects/${projectId}/tasks/${taskId}/runs/${runId}/command/`,
+        { jsonrpc: '2.0', method: 'user_message', params: { content } }
+    )
+    if (response?.result?.queued !== true) {
+        throw new Error("The agent didn't confirm the message.")
+    }
+}
+
+/**
+ * Starts a new run of a task with a follow-up message. Chained from the last run, the new run
+ * continues that conversation. The server answers with the task, the new run as `latest_run`.
+ */
+export async function resumeCanvasTask(
+    projectId: string,
+    taskId: string,
+    input: { resumeFromRunId: string | null; message: string }
+): Promise<CanvasGenerationTask> {
+    return api.create<CanvasGenerationTask>(`api/projects/${projectId}/tasks/${taskId}/run/`, {
+        ...(input.resumeFromRunId ? { resume_from_run_id: input.resumeFromRunId } : {}),
+        pending_user_message: input.message,
+    })
 }

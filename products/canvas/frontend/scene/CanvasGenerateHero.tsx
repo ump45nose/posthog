@@ -1,31 +1,16 @@
 import { useActions, useValues } from 'kea'
-import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { IconSend } from '@posthog/icons'
-import {
-    Button,
-    Heading,
-    InputGroup,
-    InputGroupAddon,
-    InputGroupTextarea,
-    Item,
-    ItemContent,
-    ItemDescription,
-    ItemMedia,
-    ItemTitle,
-    Text,
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@posthog/quill'
+import { Heading, Item, ItemContent, ItemDescription, ItemMedia, ItemTitle, Text } from '@posthog/quill'
 
 import { newCanvasDialogLogic } from '../newCanvas/newCanvasDialogLogic'
+import { CanvasComposer } from './CanvasComposer'
 import { CANVAS_GENERATE_SUGGESTIONS } from './canvasGenerateSuggestions'
 import { canvasSceneLogic } from './canvasSceneLogic'
 
 /** The composer for a canvas with nothing to render: describe it and an agent builds it. */
 export function CanvasGenerateHero({ notice }: { notice?: string }): JSX.Element {
-    const { canvas, generationStarting } = useValues(canvasSceneLogic)
+    const { canvas, generationStarting, generationError } = useValues(canvasSceneLogic)
     const { generateCanvas } = useActions(canvasSceneLogic)
     const { pendingComposerFocusId } = useValues(newCanvasDialogLogic)
     const { composerFocused } = useActions(newCanvasDialogLogic)
@@ -44,12 +29,7 @@ export function CanvasGenerateHero({ notice }: { notice?: string }): JSX.Element
         // oxlint-disable-next-line react-hooks/exhaustive-deps -- focusComposer only reads a ref
     }, [canvas, pendingComposerFocusId, composerFocused])
 
-    const submit = (): void => {
-        if (!instruction.trim() || generationStarting) {
-            return
-        }
-        generateCanvas(instruction, fromSuggestion)
-    }
+    const submit = (): void => generateCanvas(instruction, fromSuggestion)
 
     return (
         <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 py-10">
@@ -67,56 +47,27 @@ export function CanvasGenerateHero({ notice }: { notice?: string }): JSX.Element
                         </Text>
                     )}
                 </div>
-                <form
-                    ref={formRef}
-                    onSubmit={(event) => {
-                        event.preventDefault()
-                        submit()
+                <CanvasComposer
+                    formRef={formRef}
+                    value={instruction}
+                    onChange={(value) => {
+                        setInstruction(value)
+                        setFromSuggestion(false)
                     }}
-                >
-                    <InputGroup>
-                        <InputGroupTextarea
-                            aria-label="Describe the canvas"
-                            placeholder="A chart of daily signups for the last 30 days, with the total at the top"
-                            rows={4}
-                            value={instruction}
-                            disabled={generationStarting}
-                            onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-                                setInstruction(event.target.value)
-                                setFromSuggestion(false)
-                            }}
-                            onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
-                                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-                                    event.preventDefault()
-                                    submit()
-                                }
-                            }}
-                            data-attr="canvas-generate-input"
-                        />
-                        <InputGroupAddon align="block-end" className="justify-end">
-                            <Tooltip>
-                                <TooltipTrigger
-                                    render={
-                                        <Button
-                                            type="submit"
-                                            variant="primary"
-                                            size="icon-sm"
-                                            aria-label="Build canvas"
-                                            loading={generationStarting}
-                                            disabled={!instruction.trim()}
-                                            data-attr="canvas-generate-submit"
-                                        />
-                                    }
-                                >
-                                    <IconSend />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    {instruction.trim() ? 'Build canvas' : 'Describe the canvas first'}
-                                </TooltipContent>
-                            </Tooltip>
-                        </InputGroupAddon>
-                    </InputGroup>
-                </form>
+                    onSubmit={submit}
+                    submitting={generationStarting}
+                    placeholder="A chart of daily signups for the last 30 days, with the total at the top"
+                    ariaLabel="Describe the canvas"
+                    submitLabel="Build canvas"
+                    emptyHint="Describe the canvas first"
+                    rows={4}
+                    dataAttr="canvas-generate"
+                />
+                {generationError && !generationStarting && (
+                    <Text size="sm" variant="destructive" role="alert">
+                        The agent didn't start. {generationError}
+                    </Text>
+                )}
                 <div className="flex flex-col gap-2">
                     <Text size="xs" variant="muted" weight="medium">
                         Suggestions

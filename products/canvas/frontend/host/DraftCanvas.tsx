@@ -1,7 +1,14 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
+import { translateCanvasTextSelection } from '../sidePanel/comments/canvasCommentThreads'
 import { CanvasHostCallbacks, createCanvasHostMessageRouter } from './canvasHostMessageRouter'
-import { CANVAS_CHANNEL, CanvasTheme, HostToCanvasMessage, canvasToHostMessageSchema } from './canvasProtocol'
+import {
+    CANVAS_CHANNEL,
+    CanvasCommentHighlight,
+    CanvasTheme,
+    HostToCanvasMessage,
+    canvasToHostMessageSchema,
+} from './canvasProtocol'
 
 export interface DraftCanvasProps extends CanvasHostCallbacks {
     /** The sandbox bootstrap document on the artifact origin. */
@@ -11,6 +18,10 @@ export interface DraftCanvasProps extends CanvasHostCallbacks {
     theme: CanvasTheme
     hasUserActivation: () => boolean
     onOpenExternal: (url: string) => void
+    /** Comment anchors to draw in the frame. */
+    commentHighlights: CanvasCommentHighlight[]
+    /** Bumped to clear the viewer's text selection in the frame, for example after they comment on it. */
+    clearTextSelectionKey: number
 }
 
 /**
@@ -25,19 +36,27 @@ export function DraftCanvas({
     theme,
     hasUserActivation,
     onOpenExternal,
+    commentHighlights,
+    clearTextSelectionKey,
     ...callbacks
 }: DraftCanvasProps): JSX.Element {
     const iframeRef = useRef<HTMLIFrameElement>(null)
     const readyRef = useRef(false)
-    const latest = useRef({ code, theme, callbacks, hasUserActivation, onOpenExternal })
-    latest.current = { code, theme, callbacks, hasUserActivation, onOpenExternal }
+    const latest = useRef({ code, theme, callbacks, hasUserActivation, onOpenExternal, commentHighlights })
+    latest.current = { code, theme, callbacks, hasUserActivation, onOpenExternal, commentHighlights }
 
     const post = (message: HostToCanvasMessage): void => {
         // The sandbox has an opaque origin, so no narrower target origin matches it.
         iframeRef.current?.contentWindow?.postMessage(message, '*')
     }
     const postInit = (): void => {
-        post({ channel: CANVAS_CHANNEL, type: 'init', code: latest.current.code, theme: latest.current.theme })
+        post({
+            channel: CANVAS_CHANNEL,
+            type: 'init',
+            code: latest.current.code,
+            theme: latest.current.theme,
+            highlights: latest.current.commentHighlights,
+        })
     }
 
     // A layout effect attaches the listener during commit, before the frame's one-shot
@@ -53,6 +72,10 @@ export function DraftCanvas({
                     postInit()
                     latest.current.callbacks.onReady?.()
                 },
+                onTextSelection: (selection) =>
+                    latest.current.callbacks.onTextSelection?.(
+                        translateCanvasTextSelection(selection, iframeRef.current?.getBoundingClientRect() ?? null)
+                    ),
             }),
             hasUserActivation: () => latest.current.hasUserActivation(),
             openExternal: (url) => latest.current.onOpenExternal(url),
@@ -86,6 +109,20 @@ export function DraftCanvas({
         }
         // oxlint-disable-next-line react-hooks/exhaustive-deps -- post is stable in behavior
     }, [theme])
+
+    useEffect(() => {
+        if (readyRef.current) {
+            post({ channel: CANVAS_CHANNEL, type: 'set-comment-highlights', highlights: commentHighlights })
+        }
+        // oxlint-disable-next-line react-hooks/exhaustive-deps -- post is stable in behavior
+    }, [commentHighlights])
+
+    useEffect(() => {
+        if (readyRef.current && clearTextSelectionKey > 0) {
+            post({ channel: CANVAS_CHANNEL, type: 'clear-text-selection' })
+        }
+        // oxlint-disable-next-line react-hooks/exhaustive-deps -- post is stable in behavior
+    }, [clearTextSelectionKey])
 
     return (
         <iframe

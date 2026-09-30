@@ -17,8 +17,12 @@ import {
     TooltipTrigger,
 } from '@posthog/quill'
 
-import { CanvasBuildStatusBadge } from './CanvasBuildStatusBadge'
+import { CanvasVersionControls } from '../history/CanvasVersionControls'
+import { CanvasBuildStatus } from './CanvasBuildStatus'
+import { CanvasGenerationIndicator } from './CanvasGenerationIndicator'
+import { CanvasRuntimeErrorNotice } from './CanvasRuntimeErrorNotice'
 import { canvasSceneLogic } from './canvasSceneLogic'
+import { CanvasSidePanelToggle } from './CanvasSidePanelToggle'
 
 function CanvasNameInput({ name }: { name: string }): JSX.Element {
     const { savingName } = useValues(canvasSceneLogic)
@@ -58,8 +62,9 @@ export function CanvasSceneHeader(): JSX.Element {
     const { setRenaming, copyLink, deleteCanvas } = useActions(canvasSceneLogic)
 
     return (
-        <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-2">
+            {/* The name keeps a readable width, so a narrow scene wraps the actions onto their own row. */}
+            <div className="flex min-w-48 flex-1 flex-wrap items-center gap-2">
                 {!canvas ? (
                     <Skeleton className="h-5 w-48" />
                 ) : renaming ? (
@@ -77,48 +82,58 @@ export function CanvasSceneHeader(): JSX.Element {
                         </Heading>
                     </button>
                 )}
-                {canvas && !renaming && <CanvasBuildStatusBadge />}
+                {canvas && !renaming && (
+                    <>
+                        <CanvasBuildStatus />
+                        <CanvasGenerationIndicator />
+                    </>
+                )}
             </div>
             {canvas && (
-                <DropdownMenu>
-                    <Tooltip>
-                        {/* quill's triggers do not forward refs under React 18, so a span anchors the tooltip. */}
-                        <TooltipTrigger delay={0} render={<span className="inline-flex" />}>
-                            <DropdownMenuTrigger
-                                render={
-                                    <Button
-                                        variant="default"
-                                        size="icon-sm"
-                                        aria-label="Canvas actions"
-                                        data-attr="canvas-actions-menu"
-                                    />
-                                }
+                <div className="flex flex-wrap items-center gap-1">
+                    <CanvasRuntimeErrorNotice />
+                    <CanvasVersionControls />
+                    <CanvasSidePanelToggle />
+                    <DropdownMenu>
+                        <Tooltip>
+                            {/* quill's triggers do not forward refs under React 18, so a span anchors the tooltip. */}
+                            <TooltipTrigger delay={0} render={<span className="inline-flex" />}>
+                                <DropdownMenuTrigger
+                                    render={
+                                        <Button
+                                            variant="default"
+                                            size="icon-sm"
+                                            aria-label="Canvas actions"
+                                            data-attr="canvas-actions-menu"
+                                        />
+                                    }
+                                >
+                                    <IconEllipsis />
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>Canvas actions</TooltipContent>
+                        </Tooltip>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setRenaming(true)} data-attr="canvas-action-rename">
+                                <IconPencil />
+                                Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => copyLink()} data-attr="canvas-action-copy-link">
+                                <IconCopy />
+                                Copy link
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => deleteCanvas()}
+                                data-attr="canvas-action-delete"
                             >
-                                <IconEllipsis />
-                            </DropdownMenuTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>Canvas actions</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setRenaming(true)} data-attr="canvas-action-rename">
-                            <IconPencil />
-                            Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => copyLink()} data-attr="canvas-action-copy-link">
-                            <IconCopy />
-                            Copy link
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => deleteCanvas()}
-                            data-attr="canvas-action-delete"
-                        >
-                            <IconTrash />
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                <IconTrash />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             )}
         </header>
     )
