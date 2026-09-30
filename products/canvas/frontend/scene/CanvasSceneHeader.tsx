@@ -1,7 +1,7 @@
 import { useActions, useValues } from 'kea'
 import { ChangeEvent, KeyboardEvent, useState } from 'react'
 
-import { IconCopy, IconEllipsis, IconPencil, IconTrash } from '@posthog/icons'
+import { IconCheck, IconCopy, IconEllipsis, IconPencil, IconWrench, IconTrash } from '@posthog/icons'
 import {
     Button,
     DropdownMenu,
@@ -17,6 +17,8 @@ import {
     TooltipTrigger,
 } from '@posthog/quill'
 
+import { canvasEditLogic } from '../editing/canvasEditLogic'
+import { CanvasEditToggle } from '../editing/CanvasEditToggle'
 import { CanvasVersionControls } from '../history/CanvasVersionControls'
 import { CanvasBuildStatus } from './CanvasBuildStatus'
 import { CanvasGenerationIndicator } from './CanvasGenerationIndicator'
@@ -60,6 +62,8 @@ function CanvasNameInput({ name }: { name: string }): JSX.Element {
 export function CanvasSceneHeader(): JSX.Element {
     const { canvas, renaming } = useValues(canvasSceneLogic)
     const { setRenaming, copyLink, deleteCanvas } = useActions(canvasSceneLogic)
+    const { editing, editUnavailableReason } = useValues(canvasEditLogic)
+    const { setEditing } = useActions(canvasEditLogic)
 
     return (
         <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-2">
@@ -93,6 +97,7 @@ export function CanvasSceneHeader(): JSX.Element {
                 <div className="flex flex-wrap items-center gap-1">
                     <CanvasRuntimeErrorNotice />
                     <CanvasVersionControls />
+                    <CanvasEditToggle />
                     <CanvasSidePanelToggle />
                     <DropdownMenu>
                         <Tooltip>
@@ -114,6 +119,14 @@ export function CanvasSceneHeader(): JSX.Element {
                             <TooltipContent>Canvas actions</TooltipContent>
                         </Tooltip>
                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={() => setEditing(!editing)}
+                                disabled={!editing && !!editUnavailableReason}
+                                data-attr="canvas-action-edit"
+                            >
+                                {editing ? <IconCheck /> : <IconWrench />}
+                                {editing ? 'Stop editing' : 'Edit canvas'}
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setRenaming(true)} data-attr="canvas-action-rename">
                                 <IconPencil />
                                 Rename

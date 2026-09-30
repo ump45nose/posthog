@@ -33,6 +33,9 @@ export interface canvasSidePanelLogicActions {
         canvasId: string
         collapsed: boolean
     }
+    switchTab: (tab: CanvasPanelTab) => {
+        tab: CanvasPanelTab
+    }
 }
 
 export type canvasSidePanelLogicType = MakeLogicType<canvasSidePanelLogicValues, canvasSidePanelLogicActions>
@@ -49,6 +52,8 @@ export const canvasSidePanelLogic = kea<canvasSidePanelLogicType>([
         selectTab: (tab: CanvasPanelTab, canvasId: string) => ({ tab, canvasId }),
         /** Something else asked for a tab, for example a comment anchor clicked in the canvas. */
         openTab: (tab: CanvasPanelTab, canvasId: string) => ({ tab, canvasId }),
+        /** Shows a tab without opening a hidden panel, for example the inspector when the author selects a block. */
+        switchTab: (tab: CanvasPanelTab) => ({ tab }),
     }),
     reducers({
         collapsed: [
@@ -72,6 +77,7 @@ export const canvasSidePanelLogic = kea<canvasSidePanelLogicType>([
             {
                 selectTab: (_, { tab }) => tab,
                 openTab: (_, { tab }) => tab,
+                switchTab: (_, { tab }) => tab,
             },
         ],
     }),

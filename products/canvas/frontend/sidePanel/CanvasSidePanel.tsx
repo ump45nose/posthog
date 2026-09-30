@@ -12,17 +12,20 @@ import {
     TooltipTrigger,
 } from '@posthog/quill'
 
+import { canvasEditLogic } from '../editing/canvasEditLogic'
 import { CANVAS_PANEL_TABS, CanvasPanelTab } from './canvasPanelTabs'
 import { canvasSidePanelLogic } from './canvasSidePanelLogic'
 import { CanvasSidePanelTabBody } from './CanvasSidePanelTabBody'
 import { canvasCommentsLogic } from './comments/canvasCommentsLogic'
 
-/** The canvas's right-hand panel: the agent chat, comment threads, and version timeline. */
+/** The canvas's right-hand panel: the agent chat, the blocks editor while editing, comment threads, and version timeline. */
 export function CanvasSidePanel({ canvasId }: { canvasId: string }): JSX.Element {
     const { tab } = useValues(canvasSidePanelLogic)
     const { selectTab, setCollapsed } = useActions(canvasSidePanelLogic)
     const { commentsEnabled } = useValues(canvasCommentsLogic)
-    const visibleTab: CanvasPanelTab = tab === 'comments' && !commentsEnabled ? 'chat' : tab
+    const { editing } = useValues(canvasEditLogic)
+    const visibleTab: CanvasPanelTab =
+        (tab === 'comments' && !commentsEnabled) || (tab === 'blocks' && !editing) ? 'chat' : tab
 
     return (
         <Tabs
@@ -32,7 +35,7 @@ export function CanvasSidePanel({ canvasId }: { canvasId: string }): JSX.Element
         >
             <div className="flex min-h-12 shrink-0 items-center gap-1 border-b border-border bg-chrome px-2 py-1.5">
                 <TabsList aria-label="Canvas panel" className="min-w-0">
-                    {CANVAS_PANEL_TABS.map(({ key, label, Icon }) => (
+                    {CANVAS_PANEL_TABS.filter(({ key }) => key !== 'blocks' || editing).map(({ key, label, Icon }) => (
                         <TabsTrigger
                             key={key}
                             value={key}

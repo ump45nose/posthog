@@ -16,6 +16,7 @@ import {
     TooltipTrigger,
 } from '@posthog/quill'
 
+import { canvasEditLogic } from '../editing/canvasEditLogic'
 import {
     canvasBuildStatusBadgeVariant,
     canvasBuildStatusLabel,
@@ -74,30 +75,56 @@ export function CanvasVersionControls(): JSX.Element | null {
         isGenerating,
     } = useValues(canvasHistoryLogic)
     const { undo, redo, setBrowseVersion } = useActions(canvasHistoryLogic)
+    const { sourceEditing, canUndoEdit, canRedoEdit } = useValues(canvasEditLogic)
+    const { undoEdit, redoEdit } = useActions(canvasEditLogic)
 
-    if (versions.length === 0 && drafts.length === 0) {
+    if (versions.length === 0 && drafts.length === 0 && !sourceEditing) {
         return null
     }
     const generatingReason = isGenerating ? 'The agent is changing the canvas. Wait for it to finish.' : null
 
     return (
         <div className="flex flex-wrap items-center gap-1" data-attr="canvas-version-controls">
-            <StepButton
-                label="Previous version"
-                disabledReason={generatingReason ?? (canUndo ? null : 'This is the oldest version.')}
-                onClick={undo}
-                dataAttr="canvas-version-undo"
-            >
-                <IconUndo />
-            </StepButton>
-            <StepButton
-                label="Next version"
-                disabledReason={generatingReason ?? (canRedo ? null : 'This is the latest version.')}
-                onClick={redo}
-                dataAttr="canvas-version-redo"
-            >
-                <IconRedo />
-            </StepButton>
+            {/* While editing, undo and redo step through local edits instead of published versions, like PostHog Desktop. */}
+            {sourceEditing ? (
+                <>
+                    <StepButton
+                        label="Undo"
+                        disabledReason={canUndoEdit ? null : 'There is nothing to undo.'}
+                        onClick={undoEdit}
+                        dataAttr="canvas-edit-undo"
+                    >
+                        <IconUndo />
+                    </StepButton>
+                    <StepButton
+                        label="Redo"
+                        disabledReason={canRedoEdit ? null : 'There is nothing to redo.'}
+                        onClick={redoEdit}
+                        dataAttr="canvas-edit-redo"
+                    >
+                        <IconRedo />
+                    </StepButton>
+                </>
+            ) : (
+                <>
+                    <StepButton
+                        label="Previous version"
+                        disabledReason={generatingReason ?? (canUndo ? null : 'This is the oldest version.')}
+                        onClick={undo}
+                        dataAttr="canvas-version-undo"
+                    >
+                        <IconUndo />
+                    </StepButton>
+                    <StepButton
+                        label="Next version"
+                        disabledReason={generatingReason ?? (canRedo ? null : 'This is the latest version.')}
+                        onClick={redo}
+                        dataAttr="canvas-version-redo"
+                    >
+                        <IconRedo />
+                    </StepButton>
+                </>
+            )}
             {browsedDraft ? (
                 <Badge variant="warning">Draft preview</Badge>
             ) : (
