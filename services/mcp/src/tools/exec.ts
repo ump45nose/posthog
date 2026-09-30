@@ -2,7 +2,7 @@ import { stringify as stringifyYaml } from 'yaml'
 import { z } from 'zod'
 
 import { markExecPayload, buildToolResultPayload, estimateResponseTokens } from '@/lib/build-tool-result'
-import { isPostHogCodeConsumer } from '@/lib/client-detection'
+import { isPostHogCodeConsumer, SLACK_CONSUMER } from '@/lib/client-detection'
 import { isEmptyToolResult } from '@/lib/discovery-hints'
 import {
     ExecCommandError,
@@ -258,10 +258,25 @@ function classifyLearnError(error: unknown): unknown {
     return new ExecCommandError(error.message, reason)
 }
 
-function makeExecSchema(commandReference: string): z.ZodObject<{ command: z.ZodString }> {
-    return z.object({
+const EXEC_DESCRIPTION_REFERENCE =
+    'A short plain-language note of what this call is for, such as "Count daily active users for last week". ' +
+    'The user sees it as a progress step while the call runs, so write it for someone who does not read code: ' +
+    'no SQL, IDs, or tool names.'
+
+type ExecInputShape = { command: z.ZodString }
+type DescribedExecInputShape = ExecInputShape & { description: z.ZodOptional<z.ZodString> }
+
+function makeExecSchema(
+    commandReference: string,
+    describeCalls: boolean
+): z.ZodObject<ExecInputShape> | z.ZodObject<DescribedExecInputShape> {
+    const schema = z.object({
         command: z.string().describe(commandReference),
     })
+    // Only a client that shows progress asks for the description, so other clients do not pay its tokens.
+    return describeCalls
+        ? schema.extend({ description: z.string().optional().describe(EXEC_DESCRIPTION_REFERENCE) })
+        : schema
 }
 
 function parseCommand(input: string): { verb: string; rest: string } {
@@ -1593,7 +1608,7 @@ export function createExecTool(
     scopeGatedTools: ScopeGatedTool[] = [],
     options: ExecToolOptions = {}
 ): Tool<ExecSchema> {
-    const ExecSchema = makeExecSchema(commandReference)
+    const ExecSchema = makeExecSchema(commandReference, mcpConsumer === SLACK_CONSUMER)
     const flagGatedTools = options.flagGatedTools ?? []
 
     return {
