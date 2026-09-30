@@ -28,9 +28,11 @@ from products.signals.backend.models import (
     SignalScratchpad,
 )
 from products.signals.backend.scout_harness.model_selection import ScoutModel
+from products.signals.backend.scout_harness.run_gates import check_fleet_gates
 from products.signals.backend.scout_harness.tools.scratchpad import ScratchpadEntry
 from products.signals.backend.scout_harness.trial_launch import (
     ScoutTrialLaunchError,
+    assert_trial_model_access,
     create_trial_launch,
     load_trial_context,
     load_trial_launch,
@@ -133,6 +135,15 @@ class TestScoutTrialAPI(APIBaseTest):
         self.production.refresh_from_db()
         assert self.production.emitted_count == 0
         assert not SignalReportCheck.objects.for_team(self.team.id).exists()
+
+    @parameterized.expand(["emissions/batch", "emissions/reports/batch", "token-costs"])
+    def test_read_only_posts_do_not_invalidate_private_runs(self, action: str) -> None:
+        self._as_trial()
+        response = self.client.post(
+            f"{self.trial_runs_url}{action}/", {"run_ids": [str(self.production.id)]}, format="json"
+        )
+        assert response.status_code == (403 if action == "token-costs" else 200), response.data
+        assert ScoutTrialStore(self.trial_run).invalid_reason() is None
 
     @parameterized.expand([("report_level", False), ("per_run", True)])
     def test_report_check_reads_distinguish_own_private_reports_without_exposing_other_trials(
@@ -312,6 +323,10 @@ class TestScoutTrialLaunch(APIBaseTest):
         assert [choice["model"] for choice in setup["models"]] == ["gpt-5.5"]
         assert "medium" in setup["models"][0]["reasoning_efforts"]
         assert not self.documents
+        with patch(
+            "products.signals.backend.scout_harness.trial_inspection.get_supported_reasoning_efforts", return_value=[]
+        ):
+            assert self.client.get(f"{base}trial_setup/").json()["models"] == []
 
     def test_setup_reads_saved_source_and_rejects_another_operators_context(self) -> None:
         base = self._internal_scout_base()
@@ -432,7 +447,7 @@ class TestScoutTrialLaunch(APIBaseTest):
             load_trial_launch(self.team.id, launch.id)
 
     def test_operator_launch_and_poll_use_saved_identity(self) -> None:
-        base = f"/api/projects/{self.team.id}/signals/scout/configs/{self.config.id}/"
+        base = self._internal_scout_base()
         launch_id = str(uuid4())
         with (
             patch("products.signals.backend.scout_harness.trial_views.check_fleet_gates", return_value=None),
@@ -457,6 +472,33 @@ class TestScoutTrialLaunch(APIBaseTest):
             assert result.json()["status"] == "pending"
             assert result.json()["cost_usd"] is None
             assert self.client.get(f"{base}trial_result/", {"launch_id": str(uuid4())}).status_code == 404
+
+    @parameterized.expand([False, True])
+    def test_direct_trial_endpoints_require_staff_in_internal_project(self, other_project: bool) -> None:
+        base = self._internal_scout_base()
+        if other_project:
+            other_team = Team.objects.create(organization=self.organization, name="Another example")
+            base = base.replace("/projects/2/", f"/projects/{other_team.id}/")
+        else:
+            self.user.is_staff = False
+            self.user.save(update_fields=["is_staff"])
+        payload = {"launch_id": str(uuid4())}
+        with patch(
+            "products.signals.backend.temporal.agentic.scout_scheduler.start_trial_signals_scout_run"
+        ) as dispatch:
+            assert self.client.post(f"{base}trial/", payload, format="json").status_code == 404
+            assert self.client.get(f"{base}trial_result/", payload).status_code == 404
+            dispatch.assert_not_called()
+
+    def test_revoked_model_refuses_new_execution_but_keeps_saved_launch_readable(self) -> None:
+        launch = create_trial_launch(config=self.config, user=self.user, launch_id=uuid4())
+        with patch(
+            "products.signals.backend.scout_harness.trial_launch.get_model_access_error",
+            return_value="Model access revoked",
+        ):
+            assert load_trial_launch(self.team.id, launch.id) == launch
+            with self.assertRaisesMessage(ScoutTrialLaunchError, "Model access revoked"):
+                assert_trial_model_access(launch)
 
     @parameterized.expand(
         [
@@ -485,6 +527,7 @@ class TestScoutTrialLaunch(APIBaseTest):
         concurrent_export: bool,
         workflow_status: Literal["unknown", "completed", "pending", "failed", "cancelled"],
     ) -> None:
+        self._internal_scout_base()
         launch = create_trial_launch(config=self.config, user=self.user, launch_id=uuid4())
         run = _make_run(
             self.team,
@@ -622,9 +665,12 @@ class TestScoutTrialLaunch(APIBaseTest):
             "rubric_source": "saved",
         }
         with (
-            patch("products.signals.backend.scout_harness.trial_views.check_fleet_gates", return_value=None),
+            patch(
+                "products.signals.backend.scout_harness.run_gates._read_flag_payload",
+                return_value={"guaranteed_team_ids": [self.team.id], "default_team_config": {"max_runs_per_day": 1}},
+            ),
             patch("products.signals.backend.scout_harness.trial_views.check_spend_gates", return_value=None),
-            patch("posthog.storage.object_storage.head_object", return_value=None),
+            patch("posthog.storage.object_storage.head_object_strict", return_value=None),
             patch(
                 "products.signals.backend.scout_harness.trial_evaluation.get_trial_workflow_status",
                 return_value=TrialWorkflowStatus(status="completed"),
@@ -638,6 +684,8 @@ class TestScoutTrialLaunch(APIBaseTest):
                 return_value=TrialWorkflowStatus(status="pending"),
             ),
         ):
+            rejection = check_fleet_gates(self.team.id)
+            assert rejection is not None and rejection.reason == "daily_run_budget"
             unsaved = self.client.post(f"{base}trial_evaluation/", payload, format="json")
             assert unsaved.status_code == 400
             assert "Review and save" in str(unsaved.data)
@@ -654,6 +702,12 @@ class TestScoutTrialLaunch(APIBaseTest):
             response = self.client.post(f"{base}trial_evaluation/", payload, format="json")
             assert response.status_code == 202, response.data
             assert response.json()["request"] == payload
+            with patch(
+                "products.signals.backend.scout_harness.run_gates._read_flag_payload",
+                return_value={"guaranteed_team_ids": [self.team.id], "skip_team_ids": [self.team.id]},
+            ):
+                blocked = self.client.post(f"{base}trial_evaluation/", payload, format="json")
+                assert blocked.status_code == 403, blocked.data
             snapshot_key = next(
                 key for key in self.documents if "/evaluations/" in key and key.endswith("/snapshot.json")
             )
@@ -809,7 +863,7 @@ class TestScoutTrialLaunch(APIBaseTest):
             assert self.client.post(f"{base}trial_comparison/", payload, format="json").status_code == 400
             assert dispatch.call_count == 2
 
-    @parameterized.expand(["rubric", "model", "effort", "writes", "nonstaff", "invalid_id"])
+    @parameterized.expand(["rubric", "model", "effort", "writes", "nonstaff", "invalid_id", "stale_version"])
     def test_comparison_rejects_unusable_setup_before_any_run_dispatch(self, invalid: str) -> None:
         base = self._internal_scout_base()
         variant_id = str(uuid4())
@@ -820,7 +874,7 @@ class TestScoutTrialLaunch(APIBaseTest):
             "model": "gpt-5.5",
             "reasoning_effort": "medium",
         }
-        payload = {
+        payload: dict[str, object] = {
             "comparison_id": str(uuid4()),
             "baseline_variant_id": variant_id,
             "variants": [variant],
@@ -847,6 +901,8 @@ class TestScoutTrialLaunch(APIBaseTest):
             self.user.save(update_fields=["is_staff"])
         elif invalid == "invalid_id":
             payload["comparison_id"] = "not-a-uuid"
+        elif invalid == "stale_version":
+            payload["expected_skill_version"] = self.skill.version + 1
         with patch(
             "products.signals.backend.temporal.agentic.scout_trial_comparison.start_trial_comparison"
         ) as dispatch:

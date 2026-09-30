@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
+from functools import cached_property
 from typing import TYPE_CHECKING, cast
 
 from django.db.models import QuerySet
@@ -14,9 +15,9 @@ from rest_framework.response import Response
 
 from posthog.models import User
 
-from products.signals.backend.models import SignalReport, SignalReportArtefact
+from products.signals.backend.models import MAX_SCOUT_REPORT_NOTES, SignalReport, SignalReportArtefact
 from products.signals.backend.scout_harness.trial_state import ScoutTrialStore, TrialReport
-from products.signals.backend.serializers import ReportMetricListSerializer
+from products.signals.backend.serializers import ReportMetricListSerializer, ReportMetricSerializer
 
 if TYPE_CHECKING:
     from products.signals.backend.views import SignalReportViewSet
@@ -47,6 +48,10 @@ class TrialInboxReads:
         self.view = view
         self.store = store
 
+    @cached_property
+    def _github_login(self) -> str | None:
+        return self.view._get_github_login(cast(User, self.view.request.user))
+
     def _decorate(
         self, report: TrialReport, document: dict[str, JsonValue], *, include_source_metadata: bool = True
     ) -> dict[str, JsonValue]:
@@ -68,7 +73,7 @@ class TrialInboxReads:
             entries = artefact["content"]
             if isinstance(entries, list):
                 user = cast(User, self.view.request.user)
-                login = self.view._get_github_login(user)
+                login = self._github_login
                 document["is_suggested_reviewer"] = any(
                     isinstance(entry, dict)
                     and (entry.get("user_uuid") == str(user.uuid) or (login and entry.get("github_login") == login))
@@ -88,17 +93,52 @@ class TrialInboxReads:
         if live is None:
             raise exceptions.NotFound()
         document = cast(dict[str, JsonValue], dict(live))
-        changed_fields = {"signal_count", "total_weight", "collapsed_note_count", "updated_at"}
+        changed_fields: set[str] = set()
         for edit in report.edits:
             changed_fields.update(field for field in cls._EDITABLE_FIELDS if edit.get(field) is not None)
             if edit.get("repository") is not None:
                 changed_fields.add("repo_slug")
+        if any(artefact["type"] == "repo_selection" for artefact in report.artefacts):
+            changed_fields.add("repo_slug")
         for field in changed_fields:
             if field in report.document:
                 document[field] = report.document[field]
+        signal_count = live.get("signal_count", 0)
+        document["signal_count"] = (signal_count if isinstance(signal_count, int) else 0) + len(report.evidence)
+        weight = live.get("total_weight", 0)
+        document["total_weight"] = (weight if isinstance(weight, (int, float)) else 0) + sum(
+            value for row in report.evidence if isinstance(value := row.get("weight"), (int, float))
+        )
+        private_notes = sum(
+            edit.get("append_note") is not None and bool(edit.get("corroboration_only")) for edit in report.edits
+        )
+        initial_corroboration_count = report.corroboration_count - private_notes
+        private_collapsed_notes = max(0, report.corroboration_count - MAX_SCOUT_REPORT_NOTES) - max(
+            0, initial_corroboration_count - MAX_SCOUT_REPORT_NOTES
+        )
+        collapsed_count = live.get("collapsed_note_count", 0)
+        document["collapsed_note_count"] = (
+            collapsed_count if isinstance(collapsed_count, int) else 0
+        ) + private_collapsed_notes
+        document["updated_at"] = max(
+            str(live["updated_at"]),
+            str(report.document["updated_at"]),
+            key=lambda value: datetime.fromisoformat(value.replace("Z", "+00:00")),
+        )
         count = live.get("artefact_count", 0)
         document["artefact_count"] = (count if isinstance(count, int) else 0) + len(report.artefacts)
         return document
+
+    def _serialize_private_metrics(self, report: TrialReport, document: dict[str, JsonValue], *, listing: bool) -> None:
+        # Source metrics already have the viewer's policy applied, and list projections omit the query it needs.
+        if report.source_report_id is not None and not any(edit.get("metrics") is not None for edit in report.edits):
+            return
+        metrics = document.get("metrics")
+        if isinstance(metrics, list):
+            serializer = ReportMetricListSerializer if listing else ReportMetricSerializer
+            document["metrics"] = cast(
+                list[JsonValue], serializer(metrics, many=True, context=self.view.get_serializer_context()).data
+            )
 
     def detail(self, report_id: str) -> dict[str, JsonValue] | None:
         report = self.store.get_report(report_id)
@@ -107,10 +147,13 @@ class TrialInboxReads:
         if report.source_report_id is not None:
             original = self.view.get_object()
             data = self.view.get_serializer(original, context=self.view._enriched_report_context(original)).data
-            return self._decorate(report, self.overlay(report, data))
-        if report.document.get("status") not in self.view._visible_statuses():
-            raise exceptions.NotFound()
-        return self._decorate(report, self.overlay(report))
+            document = self.overlay(report, data)
+        else:
+            if report.document.get("status") not in self.view._visible_statuses():
+                raise exceptions.NotFound()
+            document = self.overlay(report)
+        self._serialize_private_metrics(report, document, listing=False)
+        return self._decorate(report, document)
 
     def _validate_parameters(self) -> None:
         unsupported = set(self.view.request.query_params) - self.SUPPORTED_LIST_PARAMETERS
@@ -211,9 +254,7 @@ class TrialInboxReads:
                 continue
             if not self._matches_sources(report, originals, matched):
                 continue
-            metrics = document.get("metrics")
-            if isinstance(metrics, list):
-                document["metrics"] = cast(list[JsonValue], ReportMetricListSerializer(metrics, many=True).data)
+            self._serialize_private_metrics(report, document, listing=True)
             result.append(document)
         return result
 

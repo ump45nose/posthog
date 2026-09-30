@@ -900,7 +900,7 @@
         "scope": "project"
     },
     "inboxScoutTrials": {
-        "template": "/inbox/scouts/comparisons",
+        "template": "/scout-trials",
         "params": [],
         "scope": "project"
     },

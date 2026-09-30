@@ -3934,6 +3934,11 @@ export interface ScoutTrialComparisonRequestApi {
      * @maxLength 1000
      */
     note?: string
+    /**
+     * Source version shown in the editor. Refuse a new trial if the instructions changed since setup.
+     * @minimum 1
+     */
+    expected_skill_version?: number
 }
 
 export interface ScoutTrialComparisonVariantApi {
