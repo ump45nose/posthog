@@ -60,6 +60,11 @@ import {
 
 const TRIAL_POLL_INTERVAL_MS = 10_000
 
+// The server refused these requests, so its reason applies and nothing is left unconfirmed.
+function isDefiniteRejection(error: unknown): error is ApiError {
+    return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 429)
+}
+
 export interface ScoutTrialComparisonState {
     value: ScoutTrialComparisonApi | null
     loading: boolean
@@ -877,10 +882,9 @@ export const scoutTrialsLogic: LogicWrapper<scoutTrialsLogicType> = kea<scoutTri
             } catch (error) {
                 if (!manager.isDisposed && getContext() === context) {
                     actions.updateComparisonState(comparison.id, {
-                        error:
-                            error instanceof ApiError && error.status === 400
-                                ? readableErrorMessage(error)
-                                : 'The retry was not confirmed. Refresh to check its status; the trial ID stays the same.',
+                        error: isDefiniteRejection(error)
+                            ? readableErrorMessage(error)
+                            : 'The retry was not confirmed. Refresh to check its status; the trial ID stays the same.',
                     })
                 }
             } finally {
@@ -1008,7 +1012,7 @@ export const scoutTrialsLogic: LogicWrapper<scoutTrialsLogicType> = kea<scoutTri
                 }
             } catch (error) {
                 if (!manager.isDisposed && getContext() === context) {
-                    const rejected = error instanceof ApiError && error.status === 400
+                    const rejected = isDefiniteRejection(error)
                     actions.updateEvaluation(comparison.id, {
                         value: null,
                         notStarted: rejected,
@@ -1135,7 +1139,7 @@ export const scoutTrialsLogic: LogicWrapper<scoutTrialsLogicType> = kea<scoutTri
                 }
             } catch (error) {
                 if (stillMounted()) {
-                    const rejected = error instanceof ApiError && error.status === 400
+                    const rejected = isDefiniteRejection(error)
                     actions.updateComparisonState(batch.comparison.id, {
                         notStarted: rejected,
                         error: rejected
