@@ -41,6 +41,7 @@ from products.surveys.backend.api.survey import (
     get_surveys_response,
     nh3_clean_with_allow_list,
 )
+from products.surveys.backend.global_cooldown import sync_survey_wait_period_flags
 from products.surveys.backend.models import MAX_ITERATION_COUNT, Survey, SurveyResponseArchive
 
 
@@ -8311,6 +8312,17 @@ class TestGlobalSurveyCooldown(APIBaseTest):
 
         self._patch_survey_config("environments", {"seenSurveyWaitPeriodInDays": None})
         assert self._flag_wait_period(running) is None
+
+    def test_resync_ends_on_the_value_saved_during_the_sync(self) -> None:
+        survey = self._create_survey()
+        stale_team = Team.objects.get(id=self.team.id)
+        stale_team.survey_config = {"seenSurveyWaitPeriodInDays": 10}
+        self.team.survey_config = {"seenSurveyWaitPeriodInDays": 20}
+        self.team.save()
+
+        sync_survey_wait_period_flags(stale_team)
+
+        assert self._flag_wait_period(survey) == "20d"
 
     @parameterized.expand([("negative", -1), ("too_long", 366), ("string", "7"), ("boolean", True)])
     def test_rejects_invalid_global_wait_period(self, _name: str, value: object) -> None:

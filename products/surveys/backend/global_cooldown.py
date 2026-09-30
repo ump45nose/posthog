@@ -87,8 +87,25 @@ def build_user_interacted_filters(survey: Survey, wait_period_days: int | None) 
     }
 
 
+MAX_SYNC_PASSES = 3
+
+
 def sync_survey_wait_period_flags(team: Team) -> None:
     """Rebuild the internal targeting flag of each survey after the project-wide cooldown changes."""
+    # A sync with a newer value can run at the same time as this one. Check the value again after each pass,
+    # so the flags end on the latest value without a lock. Each change also queues its own sync.
+    for _ in range(MAX_SYNC_PASSES):
+        synced_days = get_global_wait_period_days(team.survey_config)
+        _sync_flags_once(team)
+        team.refresh_from_db(fields=["survey_config"])
+        if get_global_wait_period_days(team.survey_config) == synced_days:
+            break
+
+    # Survey saves refresh this cache, but a team save does not.
+    surveys_hypercache.update_cache(team)
+
+
+def _sync_flags_once(team: Team) -> None:
     surveys = (
         Survey.objects.filter(team_id=team.id, archived=False, internal_targeting_flag__isnull=False)
         .select_related("internal_targeting_flag")
@@ -104,9 +121,6 @@ def sync_survey_wait_period_flags(team: Team) -> None:
         if new_filters == flag.filters:
             continue
         update_flag(flag, {"filters": new_filters}, team=team, user=None)
-
-    # Survey saves refresh this cache, but a team save does not.
-    surveys_hypercache.update_cache(team)
 
 
 def wait_period_changed(before: dict | None, after: dict | None) -> bool:
