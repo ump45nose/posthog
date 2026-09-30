@@ -15,12 +15,14 @@ import clsx from 'clsx'
 import { useActions, useValues } from 'kea'
 import { Resizer } from 'lib/components/Resizer/Resizer'
 import { resizerLogic, ResizerLogicProps } from 'lib/components/Resizer/resizerLogic'
+import { IconWithCount } from 'lib/lemon-ui/icons'
 import { useEffect, useRef } from 'react'
 import { NotebookPanel } from 'scenes/notebooks/NotebookPanel/NotebookPanel'
 
 import { SidePanelTab } from '~/types'
 
 import { SidePanelActivity } from './panels/activity/SidePanelActivity'
+import { notificationsLogic } from './panels/activity/notificationsLogic'
 import { SidePanelActivation, SidePanelActivationIcon } from './panels/SidePanelActivation'
 import { SidePanelDocs } from './panels/SidePanelDocs'
 import { SidePanelFeaturePreviews } from './panels/SidePanelFeaturePreviews'
@@ -82,6 +84,7 @@ export function SidePanel(): JSX.Element | null {
     const { visibleTabs, extraTabs } = useValues(sidePanelLogic)
     const { selectedTab, sidePanelOpen } = useValues(sidePanelStateLogic)
     const { openSidePanel, closeSidePanel, setSidePanelAvailable } = useActions(sidePanelStateLogic)
+    const { unreadCount } = useValues(notificationsLogic)
 
     const activeTab = sidePanelOpen && selectedTab
 
@@ -153,7 +156,15 @@ export function SidePanel(): JSX.Element | null {
                             return (
                                 <LemonButton
                                     key={tab}
-                                    icon={<Icon className="rotate-270 w-6" />}
+                                    icon={
+                                        tab === SidePanelTab.Activity ? (
+                                            <IconWithCount count={unreadCount} showZero={false}>
+                                                <Icon className="rotate-270 w-6" />
+                                            </IconWithCount>
+                                        ) : (
+                                            <Icon className="rotate-270 w-6" />
+                                        )
+                                    }
                                     onClick={() =>
                                         activeTab === tab ? closeSidePanel() : openSidePanel(tab as SidePanelTab)
                                     }

@@ -48,7 +48,7 @@ export const sidePanelLogic = kea<sidePanelLogicType>([
             },
         ],
     })),
-    subscriptions({
+    subscriptions(({ actions, values, cache }) => ({
         welcomeAnnouncementAcknowledged: (welcomeAnnouncementAcknowledged) => {
             if (welcomeAnnouncementAcknowledged) {
                 // Linked to the FF to ensure it isn't shown again
@@ -59,7 +59,14 @@ export const sidePanelLogic = kea<sidePanelLogicType>([
                 })
             }
         },
-    }),
+        unreadCount: (unreadCount) => {
+            const previousUnreadCount = cache.previousUnreadCount
+            cache.previousUnreadCount = unreadCount
+            if (!previousUnreadCount && unreadCount > 0 && !values.sidePanelOpen) {
+                actions.openSidePanel(SidePanelTab.Activity)
+            }
+        },
+    })),
     selectors({
         shouldShowWelcomeAnnouncement: [
             (s) => [s.welcomeAnnouncementAcknowledged, s.featureFlags],
@@ -99,8 +106,15 @@ export const sidePanelLogic = kea<sidePanelLogicType>([
         ],
 
         visibleTabs: [
-            (s) => [s.enabledTabs, s.selectedTab, s.sidePanelOpen, s.isReady, s.hasCompletedAllTasks],
-            (enabledTabs, selectedTab, sidePanelOpen): SidePanelTab[] => {
+            (s) => [
+                s.enabledTabs,
+                s.selectedTab,
+                s.sidePanelOpen,
+                s.isReady,
+                s.hasCompletedAllTasks,
+                s.unreadCount,
+            ],
+            (enabledTabs, selectedTab, sidePanelOpen, _isReady, _hasCompletedAllTasks, unreadCount): SidePanelTab[] => {
                 return enabledTabs.filter((tab: any) => {
                     if (tab === selectedTab && sidePanelOpen) {
                         return true
@@ -108,6 +122,11 @@ export const sidePanelLogic = kea<sidePanelLogicType>([
 
                     // Hide certain tabs unless they are selected
                     if (ALWAYS_EXTRA_TABS.includes(tab)) {
+                        // Show the activity tab if there are unread notifications
+                        if (tab === SidePanelTab.Activity && unreadCount) {
+                            return true
+                        }
+
                         return false
                     }
 

@@ -1,9 +1,10 @@
 import './NotebookScene.scss'
 
+import { IconEllipsis, IconNotification, IconShare, IconTrash } from '@posthog/icons'
 import { LemonButton } from '@posthog/lemon-ui'
 import { useActions, useValues } from 'kea'
 import { router } from 'kea-router'
-import { IconDelete, IconEllipsis, IconExport, IconNotification, IconShare } from 'lib/lemon-ui/icons'
+import { IconExport } from 'lib/lemon-ui/icons'
 import { LemonMenu } from 'lib/lemon-ui/LemonMenu'
 import { urls } from 'scenes/urls'
 
@@ -39,7 +40,7 @@ export function NotebookMenu({ shortId }: NotebookLogicProps): JSX.Element {
                         !isLocalOnly &&
                             !notebook?.is_template && {
                                 label: 'Delete',
-                                icon: <IconDelete />,
+                                icon: <IconTrash />,
                                 status: 'danger',
 
                                 onClick: () => {
