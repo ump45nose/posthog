@@ -19,6 +19,7 @@ from temporalio.exceptions import ApplicationError
 
 from posthog.temporal.common.utils import close_db_connections
 
+from products.slack_app.backend.facade.api import agent_plan_steps, phase_for_tool_call, tool_call_from_acp_update
 from products.tasks.backend.feature_flags import run_stream_presence_gated, run_stream_thin_tail
 from products.tasks.backend.logic.services.agent_command import (
     is_hogland_sandbox_url,
@@ -40,11 +41,6 @@ from products.tasks.backend.models import (
 from products.tasks.backend.redis import run_uses_dedicated_stream
 from products.tasks.backend.temporal.constants import INACTIVITY_TIMEOUT_DEFAULT_SECONDS, resolve_inactivity_timeout
 from products.tasks.backend.temporal.metrics import increment_tool_call_only_heartbeat
-from products.tasks.backend.temporal.process_task.slack_progress_phases import (
-    agent_plan_steps,
-    phase_for_tool_call,
-    tool_call_from_acp_update,
-)
 from products.tasks.backend.temporal.process_task.utils import (
     get_actor_distinct_id,
     get_task_run_credential_user,
