@@ -2,6 +2,7 @@ import { useActions, useValues } from 'kea'
 import { router } from 'kea-router'
 import { type MutableRefObject, type RefObject, useEffect, useMemo, useRef } from 'react'
 
+import { useFeatureFlag } from 'lib/hooks/useFeatureFlag'
 import { projectLogic } from 'scenes/projectLogic'
 import { AIConsentPopoverWrapper } from 'scenes/settings/organization/AIConsentPopoverWrapper'
 import { urls } from 'scenes/urls'
@@ -14,12 +15,17 @@ import { runSlashCommandsLogic } from 'products/posthog_ai/frontend/logics/runSl
 import { taskRunDefaultsLogic } from 'products/posthog_ai/frontend/logics/taskRunDefaultsLogic'
 import { getRuntimeAdapterForModel, pickerModels } from 'products/posthog_ai/frontend/utils/composerModels'
 import { cycleMode, getModesForRuntimeAdapter } from 'products/posthog_ai/frontend/utils/composerModes'
+import { ModelAccessEnumApi } from 'products/tasks/frontend/generated/api.schemas'
 
 import { AttachedContextBar } from '../../../components/composer/AttachedContextBar'
 import { CommandResultCard } from '../../../components/composer/CommandResultCard'
 import { ComposerAttachments, useComposerAttachmentPaste } from '../../../components/composer/ComposerAttachments'
+import { ComposerCodexBillingPickers } from '../../../components/composer/ComposerCodexBillingPickers'
 import { ComposerCommandMenu } from '../../../components/composer/ComposerCommandMenu'
-import { ComposerModelEffortPickers } from '../../../components/composer/ComposerModelEffortPickers'
+import {
+    ComposerModelEffortPickers,
+    type ComposerModelEffortPickersProps,
+} from '../../../components/composer/ComposerModelEffortPickers'
 import { ComposerModePicker } from '../../../components/composer/ComposerModePicker'
 import { ComposerModeShortcut } from '../../../components/composer/ComposerModeShortcut'
 import { useDebouncedDraft } from '../../../components/composer/useDebouncedDraft'
@@ -98,6 +104,22 @@ export function TaskRunComposer({
     const onPaste = useComposerAttachmentPaste(attachmentsKey)
     // The whole input frame is the drop target, so a file dropped anywhere on it attaches.
     const frameRef = useRef<HTMLLabelElement>(null)
+
+    const codexBillingEnabled = useFeatureFlag('POSTHOG_CODE_CODEX_OWN_SUBSCRIPTION_CLOUD')
+    const modelPickerProps: ComposerModelEffortPickersProps = {
+        models: offeredModels,
+        selectedModel,
+        defaultModel,
+        isDefaultModelLoading: myConfigLoading,
+        selectedEffort,
+        onModelChange: setModel,
+        onEffortChange: setEffort,
+        // While the run is live its harness is fixed to whatever the sandbox booted; once terminal the next send
+        // starts a fresh run, which may pick any harness.
+        lockedRuntimeAdapter: isTerminal ? null : logicProps.currentRuntimeAdapter,
+        onOpenDefaultSettings: () =>
+            router.actions.push(urls.settings('environment-task-agents', 'task-agent-my-preference')),
+    }
 
     return (
         <div onFocusCapture={() => setComposerFocused(true)} onBlurCapture={() => setComposerFocused(false)}>
@@ -190,23 +212,18 @@ export function TaskRunComposer({
                                 onModeChange={setMode}
                                 modes={getModesForRuntimeAdapter(composerAdapter)}
                             />
-                            <ComposerModelEffortPickers
-                                models={offeredModels}
-                                selectedModel={selectedModel}
-                                defaultModel={defaultModel}
-                                isDefaultModelLoading={myConfigLoading}
-                                selectedEffort={selectedEffort}
-                                onModelChange={setModel}
-                                onEffortChange={setEffort}
-                                // While the run is live its harness is fixed to whatever the sandbox booted; once
-                                // terminal the next send starts a fresh run, which may pick any harness.
-                                lockedRuntimeAdapter={isTerminal ? null : logicProps.currentRuntimeAdapter}
-                                onOpenDefaultSettings={() =>
-                                    router.actions.push(
-                                        urls.settings('environment-task-agents', 'task-agent-my-preference')
-                                    )
-                                }
-                            />
+                            {codexBillingEnabled ? (
+                                <ComposerCodexBillingPickers
+                                    {...modelPickerProps}
+                                    lockedCodexModelAccess={
+                                        isTerminal
+                                            ? null
+                                            : (logicProps.currentCodexModelAccess ?? ModelAccessEnumApi.PosthogGateway)
+                                    }
+                                />
+                            ) : (
+                                <ComposerModelEffortPickers {...modelPickerProps} />
+                            )}
                         </fieldset>
                         <div className="ml-auto">
                             <ContextUsageChip />
