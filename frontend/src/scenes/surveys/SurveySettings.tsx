@@ -87,12 +87,8 @@ export function SurveyDefaultAppearance(): JSX.Element {
             return
         }
 
-        updateCurrentTeam({
-            survey_config: {
-                ...currentTeam?.survey_config,
-                appearance: sanitizedAppearance,
-            },
-        })
+        // The server merges survey_config, so send only this key and keep other admins' edits.
+        updateCurrentTeam({ survey_config: { appearance: sanitizedAppearance } })
     }
 
     return (

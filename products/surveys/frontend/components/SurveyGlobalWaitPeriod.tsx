@@ -1,30 +1,19 @@
 import { useActions, useValues } from 'kea'
-import { useState } from 'react'
 
 import { LemonButton, LemonInput, LemonSwitch } from '@posthog/lemon-ui'
 
 import { RestrictionScope, useRestrictedArea } from 'lib/components/RestrictedArea'
 import { TeamMembershipLevel } from 'lib/constants'
-import { teamLogic } from 'scenes/teamLogic'
 
-const DEFAULT_WAIT_PERIOD_DAYS = 14
-const MAX_WAIT_PERIOD_DAYS = 365
+import { MAX_WAIT_PERIOD_DAYS, surveyGlobalWaitPeriodLogic } from './surveyGlobalWaitPeriodLogic'
 
 export function SurveyGlobalWaitPeriod(): JSX.Element {
-    const { currentTeam, currentTeamLoading } = useValues(teamLogic)
-    const { updateCurrentTeam } = useActions(teamLogic)
+    const { enabled, days, saveDisabledReason, currentTeamLoading } = useValues(surveyGlobalWaitPeriodLogic)
+    const { setEnabled, setDays, save } = useActions(surveyGlobalWaitPeriodLogic)
     const restrictedReason = useRestrictedArea({
         scope: RestrictionScope.Project,
         minimumAccessLevel: TeamMembershipLevel.Admin,
     })
-
-    const savedDays = currentTeam?.survey_config?.seenSurveyWaitPeriodInDays || null
-    const [enabled, setEnabled] = useState(!!savedDays)
-    const [days, setDays] = useState<number | undefined>(savedDays ?? DEFAULT_WAIT_PERIOD_DAYS)
-
-    const nextDays = enabled ? (days ?? null) : null
-    const isValid =
-        nextDays === null || (Number.isInteger(nextDays) && nextDays > 0 && nextDays <= MAX_WAIT_PERIOD_DAYS)
 
     return (
         <div className="flex flex-col gap-2 items-start">
@@ -57,22 +46,8 @@ export function SurveyGlobalWaitPeriod(): JSX.Element {
                 type="primary"
                 data-attr="survey-global-wait-period-save"
                 loading={currentTeamLoading}
-                disabledReason={
-                    restrictedReason ??
-                    (!isValid
-                        ? `Enter a whole number of days from 1 to ${MAX_WAIT_PERIOD_DAYS}.`
-                        : nextDays === savedDays
-                          ? 'No changes to save'
-                          : undefined)
-                }
-                onClick={() =>
-                    updateCurrentTeam({
-                        survey_config: {
-                            ...currentTeam?.survey_config,
-                            seenSurveyWaitPeriodInDays: nextDays,
-                        },
-                    })
-                }
+                disabledReason={restrictedReason ?? saveDisabledReason}
+                onClick={save}
             >
                 Save
             </LemonButton>
