@@ -1,0 +1,79 @@
+@import '../../../styles/mixins';
+@import '../../../styles/vars';
+
+.SessionRecordingsPlaylist {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+
+    align-items: flex-start;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    height: 100%;
+
+    .SessionRecordingsPlaylist__list {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        max-width: 350px;
+        min-width: 300px;
+        width: 25%;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .SessionRecordingsPlaylist__player {
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+        width: 100%;
+
+        .SessionRecordingsPlaylist__loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10rem;
+        }
+    }
+
+    &--embedded {
+        border: none;
+    }
+
+    &--wide {
+        .SessionRecordingsPlaylist__player {
+            flex: 1;
+            height: 100%;
+        }
+    }
+}
+
+.SessionRecordingPlaylistHeightWrapper {
+    // NOTE: Somewhat random way to offset the various headers and tabs above the playlist
+    height: calc(100vh - 15rem);
+    min-height: 41rem;
+}
+
+.SessionRecordingPreview {
+    display: flex;
+    padding: 0.5rem 0 0.5rem 0.5rem;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border-left: 6px solid transparent;
+    transition: background-color 200ms ease, border 200ms ease;
+
+    &--active {
+        border-left-color: var(--primary);
+    }
+
+    &:hover {
+        background-color: var(--primary-highlight);
+    }
+
+    .SessionRecordingPreview__property-icon:hover {
+        transition: opacity 200ms;
+        opacity: 1;
+    }
+}

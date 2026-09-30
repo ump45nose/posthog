@@ -1,0 +1,24 @@
+.TextCard {
+    background: var(--bg-light);
+}
+
+.TextCard-Body {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    overflow-y: auto;
+
+    ul {
+        list-style-type: disc;
+        list-style-position: inside;
+    }
+
+    ol {
+        list-style-type: numeric;
+        list-style-position: inside;
+    }
+
+    img {
+        max-width: 100%;
+    }
+}

@@ -1,0 +1,68 @@
+.activity-log {
+    &.notifications-menu {
+        max-width: 25rem;
+    }
+
+    .summary-card {
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        padding: 1rem;
+
+        .taxonomic-breakdown-filter.tag-pill {
+            font-size: 0.8125rem;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: none;
+            vertical-align: unset;
+        }
+
+        section:not(:last-child) {
+            margin-bottom: 0.5rem;
+        }
+    }
+
+    .activity-log-row {
+        display: flex;
+        margin-top: 0.5rem;
+        line-height: 24px;
+        max-width: 50rem;
+        overflow-wrap: anywhere;
+        padding: 0.5rem;
+        gap: 0.5rem;
+
+        &.unread {
+            background-color: var(--primary-highlight);
+        }
+
+        &:first-of-type {
+            margin-top: 0.5rem;
+        }
+
+        .ProfilePicture {
+            flex-grow: 0;
+        }
+
+        .details {
+            flex-grow: 1;
+
+            .highlighted-activity {
+                background-color: var(--mark);
+                display: inline;
+
+                & > .PersonDisplay {
+                    min-width: 5.5rem;
+                }
+            }
+        }
+    }
+
+    .activity-description-extended {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-caption {
+        max-width: 50rem;
+    }
+}

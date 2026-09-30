@@ -1,0 +1,40 @@
+.PropertyKeyInfo,
+.PropertyKeyInfo__header {
+    display: inline-flex;
+    gap: 0.25rem;
+    align-items: center;
+    vertical-align: bottom;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.PropertyKeyInfo__header {
+    font-weight: 600;
+}
+
+.PropertyKeyInfo__text {
+    &.PropertyKeyInfo__text--ellipsis {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+}
+
+.PropertyKeyInfo__logo {
+    display: inline-block;
+    height: 1rem;
+    width: 1rem;
+    background-image: url('../../../public/posthog-icon.svg');
+    background-size: cover;
+    flex-shrink: 0;
+}
+
+.PropertyKeyInfo__overlay {
+    padding: 0.25rem;
+    p {
+        margin-bottom: 0.25rem;
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}

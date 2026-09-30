@@ -1,0 +1,22 @@
+.InsightLegendMenu {
+    box-shadow: none !important;
+    background-color: var(--bg-light);
+    max-height: 100%;
+
+    &.InsightLegendMenu--in-card-view {
+        max-width: 40%;
+    }
+
+    &.InsightLegendMenu--horizontal {
+        max-width: 100%;
+
+        .InsightLegendMenu-scroll {
+            display: flex;
+            flex-wrap: wrap;
+
+            .InsightLegendMenu-item {
+                width: auto;
+            }
+        }
+    }
+}
