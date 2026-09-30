@@ -684,6 +684,8 @@ Its optional `adopt_generation_id` adopts that completed generation's governing 
 Ordinary criterion edits preserve the saved reference. Skill edits and later generations never update it automatically.
 Every save must include all shared defaults. Owners can edit or disable them, but cannot remove them.
 `POST .../generate/` queues the `generate-scout-rubrics` Temporal workflow and returns the active request when one already exists.
+It accepts optional `context` (up to 2,000 characters), saved on that generation request. Concurrent requests keep the first request's context; later requests do not inherit it.
+The editor exposes this as a single optional paragraph. It adds priorities without replacing the scout's responsibilities, shared defaults or saved choices.
 The backend supplies current instructions, bounded reference text from the exact skill version and recent run summaries to a background session.
 It captures the exact governing description, instructions, report rules and reference texts before the session starts, including clipping and omission metadata. This context is immutable within a generation and is reused if that attempt resumes. Historical summaries and saved criteria remain generation inputs rather than governing instructions.
 The session requests no project-read MCP scopes because that context is supplied up front. The shared sandbox's internal credentials and tool access remain an accepted limitation of the staff-only v0.

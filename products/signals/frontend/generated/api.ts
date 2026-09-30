@@ -61,6 +61,7 @@ import type {
     ScoutNoteApi,
     ScoutNoteCreateRequestApi,
     ScoutRubricDocumentApi,
+    ScoutRubricGenerateApi,
     ScoutRubricSaveApi,
     ScoutRunIdsBatchRequestApi,
     ScoutRunTokenCostsApi,
@@ -1986,11 +1987,14 @@ export const getSignalsScoutRubricsGenerateUrl = (projectId: string, id: string)
 export const signalsScoutRubricsGenerate = async (
     projectId: string,
     id: string,
+    scoutRubricGenerateApi?: ScoutRubricGenerateApi,
     options?: RequestInit
 ): Promise<ScoutRubricDocumentApi> => {
     return apiMutator<ScoutRubricDocumentApi>(getSignalsScoutRubricsGenerateUrl(projectId, id), {
         ...options,
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...options?.headers },
+        body: JSON.stringify(scoutRubricGenerateApi),
     })
 }
 

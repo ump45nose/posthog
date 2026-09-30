@@ -335,7 +335,7 @@ export interface scoutTrialsLogicActions {
 export interface scoutTrialsLogicMeta {
     key: string
     __keaTypeGenInternalSelectorTypes: {
-        editingComparison: (trialView: any) => boolean
+        editingComparison: (trialView: 'detail' | 'list' | 'setup') => boolean
         comparisonState: (
             selectedComparison: ScoutTrialComparison | null,
             comparisonStates: Record<string, ScoutTrialComparisonState>
@@ -604,7 +604,7 @@ export const scoutTrialsLogic: LogicWrapper<scoutTrialsLogicType> = kea<scoutTri
         ],
     }),
     selectors({
-        editingComparison: [(s) => [s.trialView], (view): boolean => view === 'setup'],
+        editingComparison: [(s) => [s.trialView], (view: 'detail' | 'list' | 'setup'): boolean => view === 'setup'],
         comparisonState: [
             (s) => [s.selectedComparison, s.comparisonStates],
             (
@@ -958,7 +958,7 @@ export const scoutTrialsLogic: LogicWrapper<scoutTrialsLogicType> = kea<scoutTri
                         label:
                             values.batch?.labels[group.variantId] ??
                             values.history?.results.find((run) => group.launchIds.includes(run.launch_id))?.variant ??
-                            `Variant ${index + 1}`,
+                            `Version ${index + 1}`,
                         launch_ids: group.launchIds,
                     })),
                 }
