@@ -185,6 +185,7 @@ class TrialInboxReads:
         originals = self.view._annotate_artefact_count(originals)
         originals = self.view._annotate_channel_id(originals)
         originals = self.view._prefetch_signal_report_priority_artefacts(originals)
+        originals = self.view._prefetch_signal_report_ranking_score(originals)
         originals = self.view._annotate_is_suggested_reviewer(originals)
         live = {
             str(row["id"]): row
