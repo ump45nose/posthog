@@ -1,5 +1,5 @@
 // Auto-generated from OpenRouter API - Do not edit manually
-// Generated at: 2026-09-29 10:05:55 UTC
+// Generated at: 2026-09-30 10:07:04 UTC
 
 export type CanonicalProvider =
     | 'default'
@@ -66,7 +66,6 @@ export type CanonicalProvider =
     | 'deepinfra-fp4'
     | 'deepinfra-fp8'
     | 'deepinfra-turbo'
-    | 'deepinfra-ultra'
     | 'deepinfra-us'
     | 'deepseek'
     | 'dekallm'
@@ -157,6 +156,7 @@ export type CanonicalProvider =
     | 'openai-default'
     | 'openai-fast'
     | 'openai-flex'
+    | 'openai-ultrafast'
     | 'parasail-bf16'
     | 'parasail-fp16'
     | 'parasail-fp4'
@@ -174,7 +174,6 @@ export type CanonicalProvider =
     | 'relace-bf16'
     | 'relace-fp4'
     | 'relace-fp8'
-    | 'relace-mxfp4'
     | 'sail-research-fp4'
     | 'sail-research-fp8'
     | 'sail-research-us'
