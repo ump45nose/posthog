@@ -1,4 +1,4 @@
-import { libraryObjectHref, libraryObjectName } from './libraryUtils'
+import { isLibraryType, libraryObjectHref, libraryObjectName } from './libraryUtils'
 
 describe('libraryUtils', () => {
     test.each([
@@ -16,5 +16,15 @@ describe('libraryUtils', () => {
         ['no link for an unknown type', { type: 'not_a_type', ref: '7' }, null],
     ])('links an object to %s', (_, entry, href) => {
         expect(libraryObjectHref(entry)).toBe(href)
+    })
+
+    test.each([
+        ['insight', true],
+        ['feature_flag', true],
+        ['dashboard', false],
+        ['notebook', false],
+        ['task', false],
+    ])('lists %s in Library: %s', (type, listed) => {
+        expect(isLibraryType(type)).toBe(listed)
     })
 })

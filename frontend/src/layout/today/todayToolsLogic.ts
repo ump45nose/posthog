@@ -12,8 +12,8 @@ export interface ToolGroup {
     tools: FileSystemImport[]
 }
 
-// Workspaces for building queries and writing things up come first, apart from the product pages.
-const PINNED_TOOL_ICONS = ['sql_editor', 'notebook']
+// Workspaces for building queries come first, apart from the product pages.
+const PINNED_TOOL_ICONS = ['sql_editor']
 export const PINNED_TOOLS_CATEGORY = 'Workspace'
 
 export function toolLabel(tool: FileSystemImport): string {
@@ -66,7 +66,7 @@ export const todayToolsLogic = kea<todayToolsLogicType>([
                         if (
                             !item.href ||
                             seen.has(item.href) ||
-                            // Saved object types live in Library, except the ones that are working pages.
+                            // Saved object types live in Library or Views, except the ones that are working pages.
                             (type in fileSystemTypes && !TOOL_FILE_SYSTEM_TYPES.has(type)) ||
                             (item.flag && !featureFlags[item.flag as keyof FeatureFlagsSet]) ||
                             getProductAccessDisabledReason(item)

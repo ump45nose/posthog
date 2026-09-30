@@ -6,7 +6,7 @@ import posthog from 'posthog-js'
 import { removeProjectIdIfPresent } from 'lib/utils/kea-router'
 import { urls } from 'scenes/urls'
 
-export type TodayRailPane = 'home' | 'spaces' | 'library' | 'tools'
+export type TodayRailPane = 'home' | 'spaces' | 'views' | 'library' | 'tools'
 
 export const TODAY_RAIL_WIDTH = 56
 export const TODAY_SIDEBAR_DEFAULT_WIDTH: number = 312
@@ -34,6 +34,14 @@ export function railPaneForPath(pathname: string): TodayRailPane | null {
     }
     if (isUnder(path, '/ai') || isUnder(path, '/spaces')) {
         return 'spaces'
+    }
+    if (
+        isUnder(path, urls.views()) ||
+        isUnder(path, '/canvases') ||
+        isUnder(path, urls.notebooks()) ||
+        isUnder(path, urls.dashboards())
+    ) {
+        return 'views'
     }
     if (isUnder(path, urls.library())) {
         return 'library'
@@ -155,6 +163,9 @@ export const todayShellLogic = kea<todayShellLogicType>([
             posthog.capture('today rail pane picked', { pane })
             if (pane === 'home' && values.routePane !== 'home') {
                 router.actions.push(urls.projectHomepage())
+            }
+            if (pane === 'views' && values.routePane !== 'views') {
+                router.actions.push(urls.views())
             }
             if (pane === 'library' && values.routePane !== 'library') {
                 router.actions.push(urls.library())
