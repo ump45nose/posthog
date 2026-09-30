@@ -1,6 +1,12 @@
-from unittest import TestCase
+import sys
+import json
+import tempfile
+from pathlib import Path
 
-from parse_run_log import JsonValue, facts
+from unittest import TestCase
+from unittest.mock import patch
+
+from parse_run_log import JsonValue, facts, main
 
 
 class TestRunLogFacts(TestCase):
@@ -43,3 +49,11 @@ class TestRunLogFacts(TestCase):
                 self.assertEqual(result["files_in_page"], ["posthog/api/example.py"])
                 self.assertEqual(result["files_outside_page"], ["products/example/backend/views.py"])
                 self.assertFalse(facts(entries, set(), "different-commit")["pin_ok"])
+
+    def test_rejects_a_single_api_response_instead_of_parsing_a_partial_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "one-page.json"
+            log.write_text(json.dumps({"results": []}))
+            with patch.object(sys, "argv", ["parse_run_log.py", str(log)]), self.assertRaises(SystemExit) as raised:
+                main()
+        self.assertIn("complete session log", str(raised.exception))

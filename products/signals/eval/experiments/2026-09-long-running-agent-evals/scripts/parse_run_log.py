@@ -1,6 +1,11 @@
-"""Turn one scout run's session log (tasks-runs-session-logs-retrieve --json, saved to a file) into
-the facts the judge and the hard checks need: the pinned commit check, every bash command and the
-files it touched, every report the scout filed, every memory write, and the close-out summary.
+"""Turn one scout run's complete session log into the facts the judge and the hard checks need: the
+pinned commit check, every bash command and the files it touched, every report the scout filed,
+every memory write, and the close-out summary.
+
+The input is the <launch-id>.session-log.json file that run_live_trials.py saves. That script reads
+the session logs API page by page until a page is empty, so the file holds the whole run. One
+tasks-runs-session-logs-retrieve response is only one page and can miss the reports, memory writes
+and summary at the end of a run.
 
 Usage: python3 parse_run_log.py <session-log.json> [--page page-1.txt] [--commit <sha>] > run.facts.json
 """
@@ -157,9 +162,11 @@ def main() -> None:
     parser.add_argument("--commit")
     args = parser.parse_args()
     raw_entries: JsonValue = json.loads(Path(args.log).read_text())
-    if isinstance(raw_entries, dict):
-        raw_entries = raw_entries.get("results") or raw_entries.get("entries") or []
-    entries = [_object(entry) for entry in raw_entries] if isinstance(raw_entries, list) else []
+    if not isinstance(raw_entries, list):
+        raise SystemExit(
+            "Pass the complete session log that run_live_trials.py saves. One API response is only one page."
+        )
+    entries = [_object(entry) for entry in raw_entries]
     page = set(Path(args.page).read_text().split()) if args.page else set()
     print(json.dumps(facts(entries, page, args.commit), indent=1))  # noqa: T201 — eval script, stdout is the intended output channel
 
