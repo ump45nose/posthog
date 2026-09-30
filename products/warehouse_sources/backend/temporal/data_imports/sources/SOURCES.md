@@ -301,6 +301,7 @@ the row lists both.
 | financial_modelling              | HTTP                        | requests                                                        | ✅                          |
 | finnhub                          | HTTP                        | requests                                                        | ✅                          |
 | finnworlds                       | HTTP                        | requests                                                        | ✅                          |
+| fintoc                           | HTTP + Webhook              | requests + `rest_source.RESTClient` + `WebhookSourceManager`    | ✅ (pull) / ➖ (webhook)    |
 | firebase                         | HTTP                        | requests + `pyjwt`                                              | ✅                          |
 | firecrawl                        | HTTP                        | requests                                                        | ✅                          |
 | fireworks_ai                     | HTTP                        | requests                                                        | ✅                          |
@@ -368,6 +369,7 @@ the row lists both.
 | heroku                           | HTTP                        | requests                                                        | ✅                          |
 | hetzner                          | HTTP                        | requests                                                        | ✅                          |
 | hex                              | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
+| heygen                           | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | heyreach                         | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | hibob                            | HTTP                        | requests                                                        | ✅                          |
 | hightouch                        | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
@@ -1054,7 +1056,6 @@ doesn't conflict with concurrent PRs.
 - fieldwire
 - filevine
 - finout
-- fintoc
 - firebolt
 - five9
 - flagsmith
@@ -1138,7 +1139,6 @@ doesn't conflict with concurrent PRs.
 - healthie
 - heap
 - hetzner
-- heygen
 - hibob
 - high_level
 - hivebrite
