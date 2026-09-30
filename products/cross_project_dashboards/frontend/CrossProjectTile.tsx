@@ -33,11 +33,14 @@ export function CrossProjectTile({
     const [insight, setInsight] = useState<InsightModel | null>(null)
     const [unavailable, setUnavailable] = useState<TileUnavailableReason | null>(null)
     const [loading, setLoading] = useState(true)
+    // Compared by value, so a re-render that rebuilds the filters object does not refetch the tile.
+    const filtersKey = JSON.stringify(filtersOverride ?? {})
 
     useEffect(() => {
         let cancelled = false
         setLoading(true)
-        void fetchCrossProjectTile(projectId, insightId, filtersOverride).then((result) => {
+        const filters = filtersKey === '{}' ? undefined : JSON.parse(filtersKey)
+        void fetchCrossProjectTile(projectId, insightId, filters).then((result) => {
             if (cancelled) {
                 return
             }
@@ -48,7 +51,7 @@ export function CrossProjectTile({
         return () => {
             cancelled = true
         }
-    }, [projectId, insightId, filtersOverride])
+    }, [projectId, insightId, filtersKey])
 
     const withRemove = (content: JSX.Element): JSX.Element =>
         onRemove ? (

@@ -3,6 +3,7 @@ import { useActions, useValues } from 'kea'
 import { IconPlus } from '@posthog/icons'
 import { LemonButton, LemonSkeleton } from '@posthog/lemon-ui'
 
+import { DateFilter } from 'lib/components/DateFilter/DateFilter'
 import { SceneExport } from 'scenes/sceneTypes'
 
 import { SceneContent } from '~/layout/scenes/components/SceneContent'
@@ -20,8 +21,8 @@ export const scene: SceneExport = {
 }
 
 export function CrossProjectDashboardScene(): JSX.Element {
-    const { dashboard, dashboardLoading, tiles } = useValues(crossProjectDashboardLogic)
-    const { removeTile } = useActions(crossProjectDashboardLogic)
+    const { dashboard, dashboardLoading, tiles, dashboardFilters } = useValues(crossProjectDashboardLogic)
+    const { removeTile, setDates } = useActions(crossProjectDashboardLogic)
     const { openModal } = useActions(addCrossProjectTileLogic({ dashboardId: dashboard?.id ?? '' }))
 
     return (
@@ -32,14 +33,21 @@ export function CrossProjectDashboardScene(): JSX.Element {
                 resourceType={{ type: 'dashboard' }}
                 actions={
                     dashboard ? (
-                        <LemonButton
-                            type="primary"
-                            icon={<IconPlus />}
-                            onClick={openModal}
-                            data-attr="cross-project-add-tile"
-                        >
-                            Add insight
-                        </LemonButton>
+                        <div className="flex items-center gap-2">
+                            <DateFilter
+                                dateFrom={dashboardFilters.date_from ?? null}
+                                dateTo={dashboardFilters.date_to ?? null}
+                                onChange={setDates}
+                            />
+                            <LemonButton
+                                type="primary"
+                                icon={<IconPlus />}
+                                onClick={openModal}
+                                data-attr="cross-project-add-tile"
+                            >
+                                Add insight
+                            </LemonButton>
+                        </div>
                     ) : undefined
                 }
             />
@@ -56,7 +64,7 @@ export function CrossProjectDashboardScene(): JSX.Element {
                             key={tile.id}
                             projectId={tile.project_id}
                             insightId={tile.insight_id}
-                            filtersOverride={(dashboard.filters as Record<string, unknown> | undefined) ?? undefined}
+                            filtersOverride={dashboardFilters as Record<string, unknown>}
                             onRemove={() => removeTile(tile.id)}
                         />
                     ))}
