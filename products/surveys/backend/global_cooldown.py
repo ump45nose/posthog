@@ -1,20 +1,16 @@
-from typing import Any
-
-from django.db import transaction
-
 from rest_framework import serializers
 
 from posthog.models.team.team import Team
-from posthog.tasks.surveys import update_team_surveys_cache
 
-from products.surveys.backend.models import Survey
+from products.feature_flags.backend.facade.api import update_flag
+from products.surveys.backend.models import Survey, surveys_hypercache
 from products.surveys.backend.util import SurveyEventProperties
 
 WAIT_PERIOD_KEY = "seenSurveyWaitPeriodInDays"
 MAX_GLOBAL_WAIT_PERIOD_DAYS = 365
 
 
-def _positive_days(value: Any) -> int | None:
+def _positive_days(value: object) -> int | None:
     # bool is a subclass of int, so reject it explicitly.
     if isinstance(value, bool) or not isinstance(value, int | float):
         return None
@@ -36,7 +32,7 @@ def get_effective_wait_period_days(conditions: dict | None, survey_config: dict 
     return max(candidates) if candidates else None
 
 
-def build_user_interacted_filters(survey: Survey, wait_period_days: int | None) -> dict[str, Any]:
+def build_user_interacted_filters(survey: Survey, wait_period_days: int | None) -> dict[str, object]:
     survey_key = f"{survey.id}"
     if survey.iteration_count is not None and survey.iteration_count > 0:
         survey_key = f"{survey.id}/{survey.current_iteration or 1}"
@@ -107,11 +103,10 @@ def sync_survey_wait_period_flags(team: Team) -> None:
         new_filters = {**flag.filters, **build_user_interacted_filters(survey, wait_period_days)}
         if new_filters == flag.filters:
             continue
-        flag.filters = new_filters
-        flag.save(update_fields=["filters"])
+        update_flag(flag, {"filters": new_filters}, team=team, user=None)
 
     # Survey saves refresh this cache, but a team save does not.
-    transaction.on_commit(lambda: update_team_surveys_cache.delay(team.id))
+    surveys_hypercache.update_cache(team)
 
 
 def wait_period_changed(before: dict | None, after: dict | None) -> bool:

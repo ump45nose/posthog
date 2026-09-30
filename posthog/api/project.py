@@ -136,11 +136,8 @@ from products.notifications.backend.facade.api import (
     TargetType,
     create_notification,
 )
-from products.surveys.backend.global_cooldown import (
-    sync_survey_wait_period_flags,
-    validate_survey_config,
-    wait_period_changed,
-)
+from products.surveys.backend.facade.api import validate_survey_config, wait_period_changed
+from products.surveys.backend.facade.tasks import sync_team_survey_wait_period_flags
 
 logger = structlog.get_logger(__name__)
 
@@ -1367,7 +1364,8 @@ class ProjectBackwardCompatSerializer(
             set_team_in_cache(team.api_token, team)
 
         if survey_wait_period_changed:
-            sync_survey_wait_period_flags(team)
+            team_id = team.pk
+            transaction.on_commit(lambda: sync_team_survey_wait_period_flags.delay(team_id))
 
         project_after_update = instance.__dict__.copy()
         team_changes = dict_changes_between("Team", team_before_update, team_after_update, use_field_exclusions=True)

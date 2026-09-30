@@ -129,11 +129,8 @@ from products.feature_flags.backend.facade.flags import get_usage_tab_flag_evalu
 from products.feature_flags.backend.models.evaluation_context import EvaluationContext, normalize_context_name
 from products.feature_flags.backend.models.team_feature_flag_policy_config import TeamFeatureFlagPolicyConfig
 from products.logs.backend.models import TeamLogsConfig
-from products.surveys.backend.global_cooldown import (
-    sync_survey_wait_period_flags,
-    validate_survey_config,
-    wait_period_changed,
-)
+from products.surveys.backend.facade.api import validate_survey_config, wait_period_changed
+from products.surveys.backend.facade.tasks import sync_team_survey_wait_period_flags
 from products.tasks.backend.facade.workflow_tasks import (
     MAX_SELF_SERVE_WORKFLOW_TASK_RATE_CAP_PER_DAY,
     MAX_SELF_SERVE_WORKFLOW_TASK_TEAM_RATE_CAP_PER_DAY,
@@ -2347,7 +2344,8 @@ class TeamSerializer(serializers.ModelSerializer, UserPermissionsSerializerMixin
         updated_team = instance
 
         if survey_wait_period_changed:
-            sync_survey_wait_period_flags(instance)
+            team_id = instance.pk
+            transaction.on_commit(lambda: sync_team_survey_wait_period_flags.delay(team_id))
 
         changes = dict_changes_between("Team", before_update, after_update, use_field_exclusions=True)
 

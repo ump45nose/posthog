@@ -8235,7 +8235,7 @@ class TestGlobalSurveyCooldown(APIBaseTest):
         self.organization_membership.level = OrganizationMembership.Level.ADMIN
         self.organization_membership.save()
 
-    def _create_survey(self, conditions: dict | None = None, **extra: Any) -> Survey:
+    def _create_survey(self, conditions: dict | None = None, **extra: object) -> Survey:
         response = self.client.post(
             f"/api/projects/{self.team.id}/surveys/",
             data={
@@ -8285,6 +8285,14 @@ class TestGlobalSurveyCooldown(APIBaseTest):
         assert self._flag_wait_period(survey) == (f"{expected}d" if expected else None)
         assert (self._payload_wait_period(survey) or None) == expected
 
+    def _patch_survey_config(self, path: str, survey_config: dict) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(
+                f"/api/{path}/{self.team.id}/", data={"survey_config": survey_config}, format="json"
+            )
+        assert response.status_code == status.HTTP_200_OK, response.json()
+        self.team.refresh_from_db()
+
     def test_changing_global_wait_period_resyncs_existing_surveys(self) -> None:
         running = self._create_survey()
         archived = self._create_survey()
@@ -8292,30 +8300,20 @@ class TestGlobalSurveyCooldown(APIBaseTest):
         archived.save()
         assert self._flag_wait_period(running) is None
 
-        response = self.client.patch(
-            f"/api/projects/{self.team.id}/",
-            data={"survey_config": {"seenSurveyWaitPeriodInDays": 10}},
-            format="json",
-        )
-        assert response.status_code == status.HTTP_200_OK, response.json()
-
-        self.team.refresh_from_db()
+        self._patch_survey_config("projects", {"seenSurveyWaitPeriodInDays": 10})
         assert self._flag_wait_period(running) == "10d"
         assert self._flag_wait_period(archived) is None
         assert self._payload_wait_period(running) == 10
 
-        response = self.client.patch(
-            f"/api/environments/{self.team.id}/",
-            data={"survey_config": {"seenSurveyWaitPeriodInDays": None}},
-            format="json",
-        )
-        assert response.status_code == status.HTTP_200_OK, response.json()
+        self._patch_survey_config("projects", {"appearance": {"backgroundColor": "#eeeded"}})
+        assert self.team.survey_config["seenSurveyWaitPeriodInDays"] == 10
+        assert self._flag_wait_period(running) == "10d"
 
-        self.team.refresh_from_db()
+        self._patch_survey_config("environments", {"seenSurveyWaitPeriodInDays": None})
         assert self._flag_wait_period(running) is None
 
     @parameterized.expand([("negative", -1), ("too_long", 366), ("string", "7"), ("boolean", True)])
-    def test_rejects_invalid_global_wait_period(self, _name: str, value: Any) -> None:
+    def test_rejects_invalid_global_wait_period(self, _name: str, value: object) -> None:
         response = self.client.patch(
             f"/api/projects/{self.team.id}/",
             data={"survey_config": {"seenSurveyWaitPeriodInDays": value}},
