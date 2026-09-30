@@ -272,7 +272,10 @@ const InsightCreateSchema = () => {
     })
 }
 
-const insightCreate = (): ToolBase<ReturnType<typeof InsightCreateSchema>, WithPostHogUrl<Schemas.Insight>> => ({
+const insightCreate = (): ToolBase<
+    ReturnType<typeof InsightCreateSchema>,
+    WithAgentNote<WithPostHogUrl<Schemas.Insight>>
+> => ({
     name: 'insight-create',
     schema: InsightCreateSchema(),
     handler: async (context: Context, params: z.infer<ReturnType<typeof InsightCreateSchema>>) => {
@@ -310,7 +313,10 @@ const insightCreate = (): ToolBase<ReturnType<typeof InsightCreateSchema>, WithP
             'hogql',
             'types',
         ]) as typeof result
-        return await withPostHogUrl(context, filtered, `/insights/${filtered.short_id}`)
+        return withAgentNote(
+            await withPostHogUrl(context, filtered, `/insights/${filtered.short_id}`),
+            'When you tell the user about this insight, name the display you chose and one or two other displays that also fit this query, in one short sentence, and offer to change it. If the user agrees, change it with insight-update. Suggest only displays that fit: for change over time `ActionsLineGraph`, `ActionsAreaGraph`, `ActionsBar` or `ActionsUnstackedBar`; for totals per breakdown value or series `ActionsBarValue`, `ActionsPie` or `ActionsTable`; for one number `Metric` or `BoldNumber`, never with a breakdown or more than one series; `WorldMap` only for a `$geoip_country_name` breakdown. Use the chart names a person sees, such as "bar chart per category" or "line chart", not enum values or tool names. If the user named the chart they want, do not suggest others. If you create several insights in this task, give one short list of alternatives at the end, not one per insight.\n'
+        )
     },
 })
 
