@@ -317,6 +317,7 @@ export interface accessDetailLogicActions {
             | 'tagger'
             | 'task'
             | 'ticket'
+            | 'today'
             | 'toolbar'
             | 'tracing'
             | 'uploaded_media'
