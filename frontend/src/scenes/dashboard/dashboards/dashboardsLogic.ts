@@ -580,7 +580,10 @@ export const dashboardsLogic = kea<dashboardsLogicType>([
     urlToAction(({ actions, values }) => ({
         '/dashboard': (_, searchParams) => {
             const requestedTab = (searchParams['tab'] as DashboardsTab | undefined) || DashboardsTab.All
-            const tab = requestedTab === DashboardsTab.Yours ? DashboardsTab.Yours : DashboardsTab.All
+            // Pinned is deliberately absent: it arrives as a filter, not a tab, and is handled
+            // by hasFilterParams below. Anything else unrecognized falls back to All.
+            const tabsFromUrl: DashboardsTab[] = [DashboardsTab.Yours, DashboardsTab.CrossProject]
+            const tab = tabsFromUrl.includes(requestedTab) ? requestedTab : DashboardsTab.All
             if (values.currentTab !== tab) {
                 actions.setCurrentTab(tab)
             }
