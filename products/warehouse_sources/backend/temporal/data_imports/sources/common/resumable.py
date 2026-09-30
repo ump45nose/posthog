@@ -121,9 +121,8 @@ class ResumableSourceManager(Generic[ResumableData]):
         Nothing reaches Redis until commit(), which the pipeline calls right after a write lands.
         A source with nothing outstanding stages inside committing(), which commits at block end.
         """
-        json_data = self._dump_json(data)
-        self._logger.debug(f"Staging resumable source state. key={self._key}, data={json_data}")
-        self._staged[self._key] = json_data
+        # No log here: a source can stage on every row, and commit() logs each cursor that persists.
+        self._staged[self._key] = self._dump_json(data)
 
     def has_staged_state(self) -> bool:
         """Whether the next `commit` will write anything."""
