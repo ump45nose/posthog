@@ -2,7 +2,7 @@ import { stringify as stringifyYaml } from 'yaml'
 import { z } from 'zod'
 
 import { markExecPayload, buildToolResultPayload, estimateResponseTokens } from '@/lib/build-tool-result'
-import { isPostHogCodeConsumer, SLACK_CONSUMER } from '@/lib/client-detection'
+import { isPostHogCodeConsumer } from '@/lib/client-detection'
 import { isEmptyToolResult } from '@/lib/discovery-hints'
 import {
     ExecCommandError,
@@ -257,6 +257,9 @@ function classifyLearnError(error: unknown): unknown {
     const reason: ExecCommandErrorReason = error.message.startsWith('Unknown ') ? 'unknown_learn_topic' : 'usage'
     return new ExecCommandError(error.message, reason)
 }
+
+// Slack-launched task runs show each call's description as a progress step.
+const DESCRIBED_CALLS_CONSUMER = 'slack'
 
 const EXEC_DESCRIPTION_REFERENCE =
     'At most 8 plain words on what this call is for, such as "Count daily active users for last week". ' +
@@ -1608,7 +1611,7 @@ export function createExecTool(
     scopeGatedTools: ScopeGatedTool[] = [],
     options: ExecToolOptions = {}
 ): Tool<ExecSchema> {
-    const ExecSchema = makeExecSchema(commandReference, mcpConsumer === SLACK_CONSUMER)
+    const ExecSchema = makeExecSchema(commandReference, mcpConsumer === DESCRIBED_CALLS_CONSUMER)
     const flagGatedTools = options.flagGatedTools ?? []
 
     return {
