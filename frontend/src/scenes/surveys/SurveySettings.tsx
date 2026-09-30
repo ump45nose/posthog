@@ -143,6 +143,7 @@ export function SurveySettings({ isModal = false }: { isModal?: boolean }): JSX.
     return (
         <div className="flex flex-col gap-4">
             <SurveyEnableToggle />
+            <SurveyDefaultAppearance />
             <div className="flex flex-col gap-2">
                 <h3 className="mb-0">Wait period between surveys</h3>
                 <p className="mb-0 text-secondary">
@@ -151,7 +152,6 @@ export function SurveySettings({ isModal = false }: { isModal?: boolean }): JSX.
                 </p>
                 <SurveyGlobalWaitPeriod />
             </div>
-            <SurveyDefaultAppearance />
         </div>
     )
 }
