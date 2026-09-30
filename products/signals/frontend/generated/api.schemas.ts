@@ -3947,7 +3947,7 @@ export interface ScoutTrialComparisonRequestApi {
     comparison_id: string
     /** Variant used as the comparison baseline. */
     baseline_variant_id: string
-    /** Variants containing at most 20 total scout runs. */
+    /** Up to 20 variants, each with up to 20 scout runs. */
     variants: ScoutTrialComparisonVariantRequestApi[]
     /**
      * Shared investigation note.
@@ -4030,7 +4030,7 @@ export interface ScoutTrialEvaluationRequestApi {
     evaluation_id: string
     /** Variant to use as the baseline for descriptive differences. */
     baseline_variant_id: string
-    /** Explicit variant groups containing at most 20 total trial runs. */
+    /** Up to 20 variant groups, each with up to 20 trial runs. */
     variants: ScoutTrialEvaluationVariantApi[]
     /** Use saved for new evaluations. Mock is retained only for exact retries of existing evaluations.
      *

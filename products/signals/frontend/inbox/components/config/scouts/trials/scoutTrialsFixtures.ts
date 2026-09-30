@@ -18,6 +18,7 @@ export const trialFixtureConfig: SignalScoutConfigApi = {
     deprecation: null,
     scout_origin: 'custom',
     scout_role: 'specialist',
+    managed_by: 'team',
     owners: [],
     enabled: true,
     status: 'active',
